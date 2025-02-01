@@ -26,7 +26,7 @@ long isNumber(const char *s){
 
 //Funzione per stampare il messaggio di help
 void print_help(const char *progname){
-    printf("Usage: %s -n <numero> -s <stringa> -m <numero> -h\n", progname);
+    printf("Usage: %s -n <numero> -s <stringa> -m <numero> -h per aiuto\n", progname);
 }
 
 int main(int argc, char *argv[]){
@@ -38,6 +38,38 @@ int main(int argc, char *argv[]){
 
     int i = 1; //Indice per scorrere gli argomenti della CLI
     while(i < argc){
-        if(strcmp(argv[i]))
+        if(strcmp(argv[i], "-h") == 0){
+            //se presente -h, stampa l'help e termino il programma
+            print_help(argv[0]);
+            return 0;
+        }
+        else if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "-m") == 0){
+            //controllo se l'opzione "-n" o "-m" hanno argomenti validi
+            if(i + 1 < argc && isNumber(argv[i + 1]) != -1){
+                printf("%s: %s\n", argv[i], argv[i + 1]);
+                i += 2; //prossima opzione
+            }
+            else {
+                printf("Errore: L'opzione %s richiede un numero valido di argomenti\n", argv[i]);
+                return 1;
+            }
+        }
+        else if (strcmp(argv[i], "-s") == 0){
+            //controllo se "-s" ha argomenti validi
+            if(i + 1 < argc){
+                printf("%s: %s\n",argv[i], argv[i + 1]);
+                i += 2;
+            }
+            else{
+                printf("Errore: L'opzione %s richiede una stringa\n", argv[i]);
+                return 1;
+            }
+        }
+        else{
+            //Se l'opzione non è riconosciuta, stampo errore
+            printf("Opzione %s non riconosciuta\n", argv[i]);
+            i++;
+        }
     }
+    return 0;
 }
