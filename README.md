@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Emulatore PlayStation 1 in C
 
 Questo è un emulatore per PlayStation 1 scritto in C. L'obiettivo è emulare l'hardware della PS1, inclusi la CPU MIPS R3000A, la memoria, la GPU, la SPU e altri componenti.
@@ -17,3 +18,8 @@ Questo è un emulatore per PlayStation 1 scritto in C. L'obiettivo è emulare l'
 
 ## Licenza
 Solo per scopi educativi. Non utilizzare BIOS o ROM protetti da copyright.
+=======
+# Laboratorio di Sistemi Operativi
+
+Esercizi vari del laboratorio di sistemi Operativi UNIPI
+>>>>>>> 10b9188 (Finito esercitazione 2)
