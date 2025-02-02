@@ -16,23 +16,22 @@ int main(int argc, char *argv[]){
     (void)argv; //Evita warning per argv
 
     char str[] = "Sto,testando,il,programma,main"; //stringa da tokenizzare
-    char *token;
+    char *token = NULL;
 
     printf("Using tokenizer:\n");
-    token = tokenizer(str, ","); //Prima chiamata a tokenizer
+    tokenizer(str, ",", &token); //Prima chiamata a tokenizer
     while(token != NULL){
         printf("%s\n",token);
-        token = tokenizer(NULL, ","); //Chiamata successiva con NULL
+        tokenizer(NULL, ",", &token); //Chiamata successiva con NULL
     }
 
     char str2[] = "Sono,Asus,mi,trovo,qui"; //Seconda stringa da tokenizzare
     char *saveptr;
 
     printf("\nUsing tokenizer_r:\n");
-    token = tokenizer_r(str2, ",", &saveptr); //Prima chiamata a tokenizer_r
+    tokenizer_r(str2, ",", &saveptr, &token); //Prima chiamata a tokenizer_r
     while(token != NULL){
         printf("%s\n", token);
-        token = tokenizer_r(NULL, ",", &saveptr); //Chiamate successive
+        tokenizer_r(NULL, ",", &saveptr, &token); //Chiamate successive
     }
     return 0;
-}
