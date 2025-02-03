@@ -3,6 +3,11 @@
 #include <pthread.h>
 #include "worker.h"
 
+// Variabili configurabili (default)
+int R = 5;  // Capacità del porta ruote
+int T = 3;  // Capacità del porta telai
+int B = 10; // Numero di biciclette da produrre
+
 pthread_mutex_t muxruote = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t muxtelaio = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t muxmagazzino = PTHREAD_MUTEX_INITIALIZER;

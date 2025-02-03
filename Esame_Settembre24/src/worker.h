@@ -6,9 +6,9 @@
 #include "queue.h"
 
 //Costanti configurabili
-#define R 5 //Capacità del porta ruote
-#define T 3 // Capacità del porta telai
-#define B 10 //Num biciclette da produrre
+extern int R ; //Capacità del porta ruote
+extern int T ; // Capacità del porta telai
+extern int B ; //Num biciclette da produrre
 
 //Mutex e variabili di condizione
 extern pthread_mutex_t muxruote, muxtelaio, muxdeposito;

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Creare la cartella di output se non esiste
+mkdir -p ../output
+
+
+
+# Definire la cartella di output per i log
+LOG_FILE="../output/log.txt"
+
 echo "Compilazione dei file..."
 make clean && make
 

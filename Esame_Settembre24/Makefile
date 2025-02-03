@@ -1,14 +1,35 @@
 CC = gcc
 CFLAGS = -Wall -pthread
 
-SRC = src/main.c src/worker.c src/queue.c
-OBJ = $(SRC:.c=.o)
-TARGET = fabbrica_biciclette
+SRC_DIR = src
+BUILD_DIR = build
+OUTPUT_DIR = output
 
-all: $(TARGET)
+# Definisci i file sorgenti e gli oggetti
+SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/queue.c $(SRC_DIR)/worker.c
+OBJS = $(SRCS:.c=.o)
+EXEC = $(BUILD_DIR)/fabbrica_biciclette
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+# Crea la cartella build se non esiste
+$(shell mkdir -p $(BUILD_DIR))
+$(shell mkdir -p $(OUTPUT_DIR))
 
+# Regola per compilare il programma
+$(EXEC): $(OBJS)
+	$(CC) $(CFLAGS) -o $(EXEC) $(OBJS)
+	@echo "Compilazione completata"
+
+# Regola per compilare i file oggetto
+$(SRC_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Pulisci i file di compilazione
 clean:
-	rm -f $(TARGET) $(OBJ)
+	@echo "Pulizia dei file..."
+	rm -f $(OBJS) $(EXEC)
+	@echo "Pulizia completata"
+
+# Esegui i test
+run_tests:
+	@echo "Esecuzione dei test..."
+	./tests/test.sh > $(OUTPUT_DIR)/log.txt 2>&1
