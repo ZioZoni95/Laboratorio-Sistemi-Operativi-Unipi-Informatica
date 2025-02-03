@@ -22,11 +22,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # Test con aumento della capacità
-echo "Test con aumento della capacità" >> $LOG_FILE
-./build/fabbrica_biciclette R=10 T=5 B=20 >> $LOG_FILE 2>&1
+echo "Test con aumento della capacità con R = 10 T = 5 B = 20" >> $LOG_FILE
+./build/fabbrica_biciclette R=10 T=6 B=20 >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]; then
     echo "Test fallito durante aumento capacità! Riavvio..." >> $LOG_FILE
-    ./build/fabbrica_biciclette R=10 T=5 B=20 >> $LOG_FILE 2>&1
+    ./build/fabbrica_biciclette R=10 T=6 B=20 >> $LOG_FILE 2>&1
     if [ $? -ne 0 ]; then
         echo "Riavvio fallito. Uscita..." >> $LOG_FILE
         exit 1

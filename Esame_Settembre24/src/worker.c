@@ -69,7 +69,7 @@ void deposita_magazzino(){
     pthread_mutex_unlock(&muxmagazzino);
 }
 
-void *francesco(void *arg){
+void *wheelsproducer(void *arg){
     int id = *(int *)arg;
     for(long r = 0;; r++){
         if(termina()) break;
@@ -79,7 +79,7 @@ void *francesco(void *arg){
     return NULL;
 }
 
-void *federico(void *arg){
+void *chassisproducer(void *arg){
     int id = *(int *)arg;
     for(long t = 0;; t++){
         if(termina()) break;
@@ -89,7 +89,7 @@ void *federico(void *arg){
     return NULL;
 }
 
-void *franco(void *arg){
+void *assemblerconsumer(void *arg){
     int id = *(int *)arg;
     for(;;){
         if(termina()) break;

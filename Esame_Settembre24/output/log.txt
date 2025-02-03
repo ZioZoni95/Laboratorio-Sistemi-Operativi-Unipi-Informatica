@@ -1,18 +1,14 @@
+Compilazione dei file...
+gcc -Wall -pthread -c src/main.c -o src/main.o
+gcc -Wall -pthread -c src/queue.c -o src/queue.o
+gcc -Wall -pthread -c src/worker.c -o src/worker.o
+gcc -Wall -pthread -o build/fabbrica_biciclette src/main.o src/queue.o src/worker.o
+Compilazione completata
 Esecuzione del test con valori di default... (R = 5, T = 3, B = 10)
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
+Benvenuto nella fabbrica di biciclette di ZioZoni95!
+Uso: ./fabbrica_biciclette [R=<numero_ruote_prodotte>] [T=<numero_telai_prodotti>] [B=<numero_biciclette_assemblate>]
+DISCLAIMER: Usare lo script per ulteriori test oppure inserire manualmente i valori desiderati
+WARNING: Avvio fabbricazione con valori di default R=5 T=3 B=10
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
@@ -22,44 +18,64 @@ Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 3 ha assemblato una bicicletta
 Thread 2 ha prodotto un telaio
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
-Thread 2 ha prodotto un telaio
-Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
-Thread 3 ha assemblato una bicicletta
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
 Produzione terminata con 10 biciclette.
-Test con aumento della capacità
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
+Test con aumento della capacità con R = 10 T = 5 B = 20
+Benvenuto nella fabbrica di biciclette di ZioZoni95!
+Uso: ./fabbrica_biciclette [R=<numero_ruote_prodotte>] [T=<numero_telai_prodotti>] [B=<numero_biciclette_assemblate>]
+DISCLAIMER: Usare lo script per ulteriori test oppure inserire manualmente i valori desiderati
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
 Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
@@ -80,10 +96,6 @@ Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 3 ha assemblato una bicicletta
-Thread 2 ha prodotto un telaio
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
@@ -104,42 +116,55 @@ Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 3 ha assemblato una bicicletta
-Thread 2 ha prodotto un telaio
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
 Produzione terminata con 20 biciclette.
 Test con sincronizzazione simultanea...
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
+Benvenuto nella fabbrica di biciclette di ZioZoni95!
+Uso: ./fabbrica_biciclette [R=<numero_ruote_prodotte>] [T=<numero_telai_prodotti>] [B=<numero_biciclette_assemblate>]
+DISCLAIMER: Usare lo script per ulteriori test oppure inserire manualmente i valori desiderati
+WARNING: Avvio fabbricazione con valori di default R=5 T=3 B=10
 Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
 Thread 2 ha prodotto un telaio
@@ -151,50 +176,37 @@ Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
-Thread 3 ha assemblato una bicicletta
-Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
+Thread 3 ha assemblato una bicicletta
+Thread 1 ha prodotto una ruota
 Produzione terminata con 10 biciclette.
-Test di concorrenza con un numero elevato di thread...
-Errore: coda piena!
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
+Test di concorrenza con un numero ridotto di thread...
+Benvenuto nella fabbrica di biciclette di ZioZoni95!
+Uso: ./fabbrica_biciclette [R=<numero_ruote_prodotte>] [T=<numero_telai_prodotti>] [B=<numero_biciclette_assemblate>]
+DISCLAIMER: Usare lo script per ulteriori test oppure inserire manualmente i valori desiderati
+WARNING: Avvio fabbricazione con valori di default R=5 T=3 B=10
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
@@ -202,28 +214,39 @@ Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 3 ha assemblato una bicicletta
+Thread 2 ha prodotto un telaio
+Thread 2 ha prodotto un telaio
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
 Thread 3 ha assemblato una bicicletta
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
+Thread 3 ha assemblato una bicicletta
+Thread 1 ha prodotto una ruota
+Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 2 ha prodotto un telaio
 Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 3 ha assemblato una bicicletta
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 2 ha prodotto un telaio
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
-Thread 1 ha prodotto una ruota
 Thread 3 ha assemblato una bicicletta
 Thread 1 ha prodotto una ruota
 Thread 2 ha prodotto un telaio
