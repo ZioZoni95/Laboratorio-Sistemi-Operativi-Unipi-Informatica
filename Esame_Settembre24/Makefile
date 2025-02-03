@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -pthread
+CFLAGS = -Wall -pthread -g -fsanitize=address,undefined
 
 SRC_DIR = src
 BUILD_DIR = build
@@ -7,7 +7,7 @@ OUTPUT_DIR = output
 
 # Definisci i file sorgenti e gli oggetti
 SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/queue.c $(SRC_DIR)/worker.c
-OBJS = $(SRCS:.c=.o)
+OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 EXEC = $(BUILD_DIR)/fabbrica_biciclette
 
 # Crea la cartella build se non esiste
@@ -19,8 +19,8 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -o $(EXEC) $(OBJS)
 	@echo "Compilazione completata"
 
-# Regola per compilare i file oggetto
-$(SRC_DIR)/%.o: $(SRC_DIR)/%.c
+# Regola per compilare i file oggetto nella cartella build
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Pulisci i file di compilazione
