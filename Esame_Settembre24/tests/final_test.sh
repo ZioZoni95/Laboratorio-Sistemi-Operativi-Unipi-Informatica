@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Definire la cartella di output per i log
-LOG_FILE="../output/log.txt"
+LOG_FILE="../Esame_Settembre24/output/log.txt"
 
 # Cambia nella cartella principale dove si trova il Makefile
 cd ../
