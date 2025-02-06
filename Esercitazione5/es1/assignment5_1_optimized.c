@@ -15,10 +15,11 @@
  * @param progname Nome del programma
  */
 void print_usage(const char *progname) {
+    // Stampa l'uso del programma in caso di argomenti errati
     fprintf(stderr, "Uso: %s [sc|std] filein fileout [buffersize]\n", progname);
     fprintf(stderr, " sc -> Usa chiamate di sistema (read/write)\n");
     fprintf(stderr, " std -> Usa chiamate di libreria (fread/fwrite)\n");
-    exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE); // Termina l'esecuzione in caso di errore
 }
 
 /**
@@ -28,38 +29,40 @@ void print_usage(const char *progname) {
  * @param buffersize Dimensione del buffer
  */
 void mycp_sc(const char *file_in, const char *file_out, size_t buffersize) {
-    int fd_in, fd_out;
-    char *buffer;
-    ssize_t bytes_read, bytes_written;
-    mode_t old_mask = umask(033); // Aggiunto per gestione permessi file
+    int fd_in, fd_out;            // Descrittori di file per input e output
+    char *buffer;                 // Buffer per la lettura e scrittura
+    ssize_t bytes_read, bytes_written; // Variabili per monitorare i byte letti e scritti
+    mode_t old_mask = umask(033); // Imposta una maschera di permessi per il file
 
-    // Apertura file di input in READ-ONLY
+    // Apre il file di input in modalità sola lettura (O_RDONLY)
     SYSCALL("open", fd_in, open(file_in, O_RDONLY), "Errore apertura file di input %s: errno = %d\n", file_in, errno);
 
-    // Creazione file di output con permessi standard
+    // Apre o crea il file di output in modalità scrittura (O_WRONLY, O_CREAT, O_TRUNC)
     SYSCALL("open", fd_out, open(file_out, O_WRONLY | O_CREAT | O_TRUNC, 0644), "Errore apertura file di output %s: errno = %d\n", file_out, errno);
 
-    umask(old_mask); // Ripristina la maschera originale
+    umask(old_mask); // Ripristina la maschera originale dei permessi
 
-    // Allocazione buffer
+    // Alloca memoria per il buffer di lettura
     buffer = (char *)malloc(buffersize);
     if (!buffer) {
         perror("Errore allocazione buffer");
-        close(fd_in);
-        close(fd_out);
-        exit(EXIT_FAILURE);
+        close(fd_in); // Chiude il file di input in caso di errore
+        close(fd_out); // Chiude il file di output in caso di errore
+        exit(EXIT_FAILURE); // Termina il programma con errore
     }
 
-    // Lettura e scrittura fino a EOF
+    // Legge dal file di input e scrive nel file di output fino alla fine del file
     while ((bytes_read = read(fd_in, buffer, buffersize)) > 0) {
         SYSCALL("write", bytes_written, write(fd_out, buffer, bytes_read), "Errore scrittura file di output %s: errno = %d\n", file_out, errno);
     }
 
-    if (bytes_read == -1) {
+    if (bytes_read == -1) { // Se c'è un errore durante la lettura
         perror("Errore in lettura");
     }
 
-    free(buffer);
+    free(buffer); // Libera la memoria allocata per il buffer
+
+    // Chiude i file dopo aver finito
     SYSCALL("close", bytes_read, close(fd_in), "Errore chiusura file di input %s: errno = %d\n", file_in, errno);
     SYSCALL("close", bytes_read, close(fd_out), "Errore chiusura file di output %s: errno = %d\n", file_out, errno);
 }
@@ -71,46 +74,46 @@ void mycp_sc(const char *file_in, const char *file_out, size_t buffersize) {
  * @param buffersize Dimensione del buffer
  */
 void mycp_std(const char *file_in, const char *file_out, size_t buffersize) {
-    FILE *fp_in, *fp_out;
-    char *buffer;
-    size_t bytes_read;
-    mode_t old_mask = umask(033); // Aggiunto per coerenza con la versione system call
+    FILE *fp_in, *fp_out;    // Puntatori a FILE per i file di input e output
+    char *buffer;             // Buffer per la lettura e scrittura
+    size_t bytes_read;        // Variabile per i byte letti
+    mode_t old_mask = umask(033); // Imposta una maschera di permessi per il file
 
-    // Apertura file con gestione errori tramite FOPEN
+    // Apre il file di input in modalità binaria (rb) e il file di output in modalità binaria (wb)
     FOPEN(fp_in, file_in, "rb");
     FOPEN(fp_out, file_out, "wb");
 
-    umask(old_mask);
+    umask(old_mask); // Ripristina la maschera originale dei permessi
 
-    // Allocazione del buffer
+    // Alloca memoria per il buffer di lettura
     buffer = (char *)malloc(buffersize);
     if (!buffer) {
         perror("Errore allocazione buffer");
-        fclose(fp_in);
-        fclose(fp_out);
-        exit(EXIT_FAILURE);
+        fclose(fp_in); // Chiude il file di input in caso di errore
+        fclose(fp_out); // Chiude il file di output in caso di errore
+        exit(EXIT_FAILURE); // Termina il programma con errore
     }
 
-    // Lettura e scrittura fino a EOF
+    // Legge e scrive dati finché non raggiunge la fine del file
     while ((bytes_read = fread(buffer, 1, buffersize, fp_in)) > 0) {
         if (fwrite(buffer, 1, bytes_read, fp_out) != bytes_read) {
             perror("Errore in scrittura");
             print_errors("Errore scrittura file di output %s: errno = %d\n", file_out, errno);
-            free(buffer);
-            fclose(fp_in);
-            fclose(fp_out);
-            exit(EXIT_FAILURE);
+            free(buffer); // Libera la memoria allocata per il buffer
+            fclose(fp_in); // Chiude il file di input in caso di errore
+            fclose(fp_out); // Chiude il file di output in caso di errore
+            exit(EXIT_FAILURE); // Termina il programma con errore
         }
     }
 
-    if (ferror(fp_in)) {
+    if (ferror(fp_in)) { // Se c'è un errore durante la lettura
         perror("Errore in lettura");
     }
 
-    free(buffer);
-    fclose(fp_in);
-    fflush(fp_out); // Aggiunto per garantire la scrittura dei buffer
-    fclose(fp_out);
+    free(buffer); // Libera la memoria allocata per il buffer
+    fclose(fp_in); // Chiude il file di input
+    fflush(fp_out); // Garantisce che tutti i dati vengano scritti su disco
+    fclose(fp_out); // Chiude il file di output
 }
 
 /**
@@ -121,23 +124,30 @@ void mycp_std(const char *file_in, const char *file_out, size_t buffersize) {
  */
 int main(int argc, char *argv[]) {
     if (argc < 4 || argc > 5) {
+        // Se il numero di argomenti non è corretto, stampa l'uso del programma
         print_usage(argv[0]);
     }
 
-    long buffer_size = DEFAULT_BUFFER_SIZE;
-    if (argc == 5 && isNumber(argv[4], &buffer_size) != 0) {
+    long buffer_size = DEFAULT_BUFFER_SIZE; // Imposta la dimensione di buffer predefinita
+    if (argc == 5 && isNumber(argv[4], &buffer_size) != 0) { 
+        // Se viene fornita una dimensione di buffer non valida, termina il programma
         fprintf(stderr, "Dimensione buffer non valida\n");
         exit(EXIT_FAILURE);
     }
 
+    // Se il primo argomento è "sc", copia il file usando le system calls
     if (strcmp(argv[1], "sc") == 0) {
         printf("--- Copia usando system calls... ---\n");
         mycp_sc(argv[2], argv[3], (size_t)buffer_size);
-    } else if (strcmp(argv[1], "std") == 0) {
+    } 
+    // Se il primo argomento è "std", copia il file usando le chiamate di libreria
+    else if (strcmp(argv[1], "std") == 0) {
         printf("--- Copia usando chiamate di libreria... ---\n");
         mycp_std(argv[2], argv[3], (size_t)buffer_size);
-    } else {
+    } 
+    // Se il primo argomento non è valido, stampa l'uso del programma
+    else {
         print_usage(argv[0]);
     }
-    return 0;
+    return 0; // Programma terminato correttamente
 }
