@@ -8,7 +8,7 @@
  * 
  *      mycp filein fileout [buffersize]
  * 
- * L'argomento 'buffersize' è la dimensione del buffer da utilizzare per leù
+ * L'argomento 'buffersize' è la dimensione del buffer da utilizzare per le
  * letture e scritture con le SCs "read" e "write" (se non specificato assegnare
  * un valore di default, es 256 bite). Realizzare quindi lo stesso programma,
  * utilizando le chiamate di libreria "fread" e "fwrite". Chiamiamo questa seconda 
