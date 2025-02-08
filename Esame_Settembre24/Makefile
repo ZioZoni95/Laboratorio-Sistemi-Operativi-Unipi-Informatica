@@ -31,5 +31,6 @@ clean:
 
 # Esegui i test
 run_tests:
-	@echo "Esecuzione dei test..."
+	@echo "Esecuzione di tutti i test..."
 	./tests/test.sh > $(OUTPUT_DIR)/log.txt 2>&1
+
