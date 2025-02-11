@@ -95,7 +95,7 @@ static void* philosopher_routine(void* arg) {
     unsigned int seed = (unsigned int) time(NULL); // Seed per la generazione casuale dei tempi di attesa
     struct timespec delay;
 
-    while (i < 100) { // Ogni filosofo esegue 100 cicli di "pensare-mangiare"
+    while (i < 5) { // Ogni filosofo esegue 100 cicli di "pensare-mangiare"
         // STATO: PENSARE
         Pthread_mutex_lock(&mutex);
         (*philosopher_current_activity)[position] = IS_THINKING;
