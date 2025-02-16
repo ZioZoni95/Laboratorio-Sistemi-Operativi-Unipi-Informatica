@@ -13,8 +13,8 @@ typedef struct Node{
 
 //Struttura per la coda concorrente
 typedef struct{
-    Node *head; //Puntatore alla testa della coda
-    Node *tail; //Puntatore all'ultimo nodo della coda
+    Node *front; //Puntatore alla testa della coda
+    Node *rear; //Puntatore all'ultimo nodo della coda
     pthread_mutex_t mutex; //Mutex per la sincronizzazione
     pthread_cond_t cond; //Variabile di condizione per la sincronizzazione
 }Queue;
