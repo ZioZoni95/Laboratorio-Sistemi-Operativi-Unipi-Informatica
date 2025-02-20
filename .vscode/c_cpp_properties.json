@@ -4,7 +4,8 @@
             "name": "linux-gcc-x64",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/Esercitazione8/soluzione_prof"
+                "${workspaceFolder}/Esercitazione8/soluzione_prof",
+                "${workspaceFolder}/Esame_Luglio23"
             ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "${default}",
