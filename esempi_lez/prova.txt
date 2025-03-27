@@ -1,0 +1,6 @@
+Inizio
+17770: Ho ricevuto 17771 (a=1 , a = 0x6111b57a72b0)
+17770:  Svegliato: 17771 (*a = 1, *a = 0x6111b57a72b0)
+Inizio
+17771: Ho ricevuto 0 (a=1 , a = 0x6111b57a72b0)
+17771:  Svegliato: 0 (*a = 2, *a = 0x6111b57a72b0)
