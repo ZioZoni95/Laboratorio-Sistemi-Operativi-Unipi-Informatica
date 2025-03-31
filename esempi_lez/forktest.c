@@ -17,8 +17,11 @@ int main(void){
     int pid;
     printf("Inizio\n");
 
+    fflush(stdout); //necessaria perchè printf duplica il buffer
+
     int *a = malloc(sizeof(int)); //puntatore allocato sull'heap settato a 1
     *a = 1;
+    
 
     pid = fork();
     printf("%d: Ho ricevuto %d (a=%d , a = %p)\n", getpid(), pid, *a, a); //stampiamo anche i valori di a e del puntatore
