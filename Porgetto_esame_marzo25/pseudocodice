@@ -1,0 +1,73 @@
+// Variabili globali
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t isFull = PTHREAD_COND_INITIALIZER;
+pthread_cond_t isEmpty = PTHREAD_COND_INITIALIZER;
+coda_t Q;
+int C; // capacità della coda
+bool produzione_terminata = false;
+
+// Funzione per dividere l'array e restituire il numero di gruppi
+int dividi_array(int* array, int N, int k, int gruppi[][2*k]);
+
+// Funzione che calcola la somma parziale di un gruppo
+int calcola_somma_parziale(int gruppo[], int k);
+
+void T_Master(int* array, int N, int k) {
+    int num_gruppi;
+    int gruppi[N/(2*k)][2*k];  // Array per memorizzare i gruppi (senza strutture)
+    
+    num_gruppi = dividi_array(array, N, k, gruppi);  // Divide l'array in gruppi
+
+    for (int i = 0; i < num_gruppi; i++) {
+        pthread_mutex_lock(&mutex);
+        
+        while (Q.size() == C) // Attende se la coda è piena
+            pthread_cond_wait(&isFull, &mutex);
+
+        // Inserisce un gruppo nella coda
+        for (int j = 0; j < 2 * k; j++) {
+            Q.push(gruppi[i][j]);
+        }
+
+        pthread_cond_signal(&isEmpty); // Notifica i Worker
+        pthread_mutex_unlock(&mutex);
+    }
+
+    // Segnale di terminazione
+    pthread_mutex_lock(&mutex);
+    produzione_terminata = true;
+    pthread_cond_broadcast(&isEmpty); // Sblocca i Worker
+    pthread_mutex_unlock(&mutex);
+}
+
+void T_worker() {
+    while (1) {
+        pthread_mutex_lock(&mutex);
+        
+        while (Q.size() < 2*k && !produzione_terminata)  // Attende un gruppo completo
+            pthread_cond_wait(&isEmpty, &mutex);
+
+        if (produzione_terminata && Q.size() < 2*k) {
+            pthread_mutex_unlock(&mutex);
+            break;  // Termina se non c'è più lavoro
+        }
+
+        // Preleva un gruppo
+        int gruppo[2*k];
+        for (int j = 0; j < 2*k; j++) {
+            gruppo[j] = Q.pop();
+        }
+
+        pthread_cond_signal(&isFull); // Notifica il Master
+        pthread_mutex_unlock(&mutex);
+
+        // Calcola la somma parziale
+        int somma = calcola_somma_parziale(gruppo, k);
+
+        // Inserisce il risultato nella coda
+        pthread_mutex_lock(&mutex);
+        Q.push(somma);
+        pthread_cond_signal(&isEmpty);
+        pthread_mutex_unlock(&mutex);
+    }
+}
