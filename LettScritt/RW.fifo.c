@@ -1,0 +1,175 @@
+//definizione della feature POSIX per utilizzare le API a partire da 2001
+#define _POSIX_C_SOURCE 200112L
+
+#include <assert.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/time.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <time.h>
+
+#include <queue.h> //Implementazione di una coda (FIFO) per la gestione degli accessi
+
+//Variabili globali per il controllo dell'esecuzione
+static int N; //Numero di iterazioni (o accessi) per i writer
+static int stop; //Varidabile di terminazione (conta i writer attivi)
+static unsigned long t0; //Tempo iniziale in microsecondi
+
+/**
+* @brief Restituisce il tempo corrente in microsecondi
+*
+* Utilizza gettimeofday() per ottenere il tempo corrente e lo converte in microsecondi
+*
+* @return Tempo corrente in microsecondi
+*/
+static inline unsigned long getusec(){
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return (unsigned long) (tv.tv_sec * 1e6 + tv.tv_usec);
+}
+
+//Mutex globale per proteggere le variabili condivise e la coda di ordinamento
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+//Conta il numero di lettori attivi in sezione critica
+static int activeReaders = 0;
+/** Stato corrente della risorsa condivisa:
+*     -1: nessuno in sezione critica
+*      0: lettura in corso
+*      1: scrittura in corso
+*/
+static int state = -1;
+
+/**
+* Struttura per gestire l'ordine FIFO tra le richieste di accesso.
+* Ogni elemento della coda contiene:
+*    - Una variabile di condizione per attendere il proprio "turno"
+*    - Un flag che indica il tipo di accesso richiesto:
++        -- 0: lettore
++        -- 1 scrittore
+*/
+typedef struct _ordering {
+  pthread_cond_t ord; //variabile di condizione associata all'accaesso
+  int rw; //Tipo di accesso
+}ordering_t;
+
+//Coda FIFO per gestire l'ordine di accesso (richieste in sospeso)
+Queue_t *orderingQ;
+
+/**
+* @brief Funzione per iniziare l'accesso in lettura (startRead)
+*
+* Ogni lettore deve:
+*    -> Acquisire il mutex globale per accedere in modo sicuro alle variabili condivise
+*    -> Verificare se c'è già uno scrittore in corso (state > 0) oppure se c'è qualcun
+*       altro in attesa (orderingQ non vuoto). In questo caso si inserisce nella coda
+*       di ordinamento e si attende finchè non sarà il proprio turno
+*    -> Una volta entrato nella sezione critica,aumenta il contatore dei lettori attivi e
+*       imposta lo stato a 0 (lettura)
+*
+* @param id Identificativo del lettore (debug/log)
+*/
+void startRead(int id){
+  pthread_mutex_lock(&mutex);
+  //Se c'è un writer attivo (state > 0) oppure qualcuno in coda, il lettore si mette in wait
+  if(top(orderingQ) != NULL || state > 0){
+    //crea un nuovo elemento per la coda di ordinamento specificando che è una richiesta di lettura
+    ordering_t *o = malloc(sizeof(ordering_t));
+    assert(o);
+
+    pthread_cond_init(&o->ord, NULL);
+    o->rw = 0; //sono lettore
+    if(push(orderingQ, o) < 0) abort();
+
+    //Attende fino a quando non viene segnalato e finchè non ci sono scrittori attivi
+    do{
+      pthread_cond_wait(&o->ord, &mutex);
+    }while (state > 0); //se ci sono scrittori, continua ad attendere
+
+    //Verifica che lo stato sia compatibile con un accesso in lettura
+    assert(state == -1 || state == 0);
+    //Rimuove il proprio elemento dalla coda FIFO
+    ordering_t *o_tmp = pop(orderingQ);
+    assert(o == o_tmp);
+    pthread_cond_destroy(&o->ord);
+    free(o);
+
+    //Se c'è un altro lettore in wait lo sveglia
+    o = top(orderingQ);
+    if(o && o->rw == 0){
+      pthread_cond_signal(&o->ord);
+    }
+  }
+  //Incrementa il numero di lettori attivi e imposta lo stato a 0 (lettura)
+  activeReaders++;
+  state = 0;
+  pthread_mutex_unlock(&mutex);
+}
+
+/**
+* @brief Funzione per terminare l'accesso in lettura (doneRead).
+*
+* Ogni lettore che termina:
+*  - Acquisisce il mutex per accedere alle variabili condivise.
+*  - Decrementa il contatore dei lettori attivi.
+*  - Se è l'ultimo lettore (activeReaders==0), resetta lo stato a -1 e,
+*    se in coda c’è uno scrittore, lo segnala.
+*
+* @param id Identificativo del lettore.
+*/
+void doneRead(int id){
+  pthread_mutex_lock(&mutex);
+  activeReaders--;
+  assert(activeReaders >= 0);
+  //Se sono l'ultimo lettore in uscita
+  if(activeReaders == 0){
+    state = -1; //reset dello stato
+    //se c'è un elemento in coda (che deve essere uno scrittore)
+    if(length(orderingQ) > 0){
+      ordering_t *o = top(orderingQ);
+      assert(o && o->rw == 1);
+      //Sveglia lo scrittore in attesa
+      pthread_cond_signal(&o->ord);
+    }
+  }
+  pthread_mutex_unlock(&mutex);
+}
+
+/**
+* @brief Funzione per iniziare l'accesso in scrittura (startWrite).
+*
+* Ogni scrittore:
+*  - Acquisisce il mutex globale.
+*  - Se ci sono altri lettori attivi o uno scrittore in corso (state >= 0),
+*    inserisce la propria richiesta nella coda e attende.
+*  - Una volta svegliato e verificato che lo stato è -1 (nessuno in sezione critica),
+*    rimuove la propria richiesta dalla coda e imposta lo stato a 1 (scrittura).
+*
+* @param id Identificativo dello scrittore.
+*/
+void startWrite(int id){
+  //Se c'è già uno o più lettori oopure uno scrittore attivo
+  if(state >= 0){
+    //Crea un nuovo elemento per la coda, indicando che è una richiesta di scrittura
+    ordering_t *o = malloc(sizeof(ordering_t));
+    pthread_cond_init(&o->ord, NULL);
+    o->rw = 1; //indica scrittura
+    if(push(orderingQ, o) < 0) abort();
+
+    //attende finchè lo stato non diventa -1 (nessuno in ssezione critica)
+    do{
+      pthread_cond_wait(&o->ord, &mutex);
+      //Viene svegliato con state = -1 per avere la precedenza su eventuali lettori arrivati nel frattempo
+    }while (state >= 0);
+    assert(state == -1);
+    //Rimuove la propria richiesta dalla coa
+    ordering_t *o_tmp = pop(orderingQ);
+    assert(o == o_tmp);
+    pthread_cond_destroy(&o->ord);
+    free(o);
+  }
+  //Imposta lo stato a 1 per indicare che un wirter sta entrando nella sezione critica
+  state = 1;
+  pthread_mutex_unlock(&mutex);
+}
