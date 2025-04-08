@@ -173,3 +173,70 @@ void startWrite(int id){
   state = 1;
   pthread_mutex_unlock(&mutex);
 }
+
+/**
+* @brief Funzione per terminare l'accesso in scrittura (doneWriter).
+*
+* Lo scrittore che termina:
+*  - Acquisisce il mutex.
+*  - Imposta lo stato a -1 per bloccare eventuali lettori che potrebbero entrare
+*    immediatamente dopo la terminazione (per garantire l'ordine).
+*  - Se esiste una richiesta in coda, la sveglia.
+*
+* @param id Identificativo dello scrittore.
+*/
+
+void doneWriter(int id){
+  pthread_mutex_lock(&mutex);
+  assert(state == 1);
+
+  //Reset dello stato a -1 per evitarer che lettori possano entrare
+  // prima di dare la precedenza ai thread in coda
+  state = -1;
+
+  //Se c'è una richeista in coda (sia essa lettore o scrittore), la sveglia
+  ordering_t *o = top(orderingQ);
+  if(o != NULL) pthread_cond_signal(&o->ord);
+  pthread_mutex_unlock(&mutex);
+}
+
+/**
+  @brief Simula un lavoro che dura un certo tempo (in microsecondi).
+*
+* Utilizza nanosleep() per effettuare una pausa (sleep) del tempo specificato.
+*
+* @param us Durata del lavoro in microsecondi.
+*/
+
+void work (long us){
+  struct timespec t = {0, us * 1000};
+  nanosleep(&t, NULL);
+}
+
+/**
+* @brief Funzione eseguita dai thread lettori.
+*
+* Ogni lettore:
+*  - Cicla finché la variabile globale stop è positiva.
+*  - Inizia la lettura chiamando startRead().
+*  - Stampa un messaggio di entrata nella sezione critica, simula un lavoro,
+*    stampa un messaggio di uscita e chiama doneRead().
+*
+* @param arg Identificativo del lettore (convertito in long).
+* @return NULL.
+*/
+
+void *Reader(void *arg){
+  long id = (long)arg;
+  while(stop > 0){
+    startRead(id);
+
+    printf("READER%ld ENTRATO entrato t=%.2f\n", id, (getusec() - t0) / 1000.0);
+    work(2000);
+    printf("READER%ld USCITO dalla sezione critica\n", id);
+
+    doneRead(id);
+  }
+  printf("READER%ld TERMINATO\n",id);
+  return NULL;
+}
