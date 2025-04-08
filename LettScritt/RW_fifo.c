@@ -240,3 +240,99 @@ void *Reader(void *arg){
   printf("READER%ld TERMINATO\n",id);
   return NULL;
 }
+
+void *Writer(void *arg){
+  long id = (long)arg;
+  for(int i = 0; i< N; ++i){
+    startWrite(id);
+
+    printf("WRITER%ld ENTRATO in sezione critica t=%.2f\n", id, (getusec() - t0) / 1000.0);
+    work(6000);
+    printf("WRITER%ld USCITO dalla sezione critica\n", id);
+
+    //Se è l'ultima iterazione, decrementa stop per far terminare i lettori
+    if(i + 1 == N)
+      --stop;
+    
+    doneWriter(id);  
+  }
+  printf("WRITER TERMINATO\n");
+  return NULL;
+}
+
+/**
+* @brief Funzione main.
+*
+* Il main:
+*  - Legge i parametri (numero di lettori, scrittori e iterazioni) dalla linea di comando.
+*  - Inizializza le variabili globali e la coda di ordinamento.
+*  - Crea i thread lettori e scrittori.
+*  - Attende la terminazione di tutti i thread, libera le risorse allocate e termina.
+*
+* @param argc Numero di argomenti.
+* @param argv Array degli argomenti.
+* @return 0 in caso di successo, -1 in caso di errore.
+*/
+int main(int argc, char *argv[]){
+  int R = 5;
+  int W = 2;
+  N = 100;
+  if(argc > 1){
+    if(argc != 4){
+      fprintf(stderr, "Uso: %s [#R #W N]\n",argv[0]);
+      return -1;
+    }
+    R = atoi(argv[1]);
+    W = atoi(argv[2]);
+    N = atoi(argv[3]);
+  }
+  //Limite ragionevole per il numero di thread
+  if(R > 100) R = 100;
+  if(W > 100) W = 100;
+
+  stop = W;
+  orderingQ = initQueue();
+  t0 = getusec();
+
+  //Alloca array per i thread lettori e scrittori
+  pthread_t *readers = malloc(R * sizeof(pthread_t));
+  pthread_t *writers = malloc(W * sizeof(pthread_t));
+  if(!readers || !writers){
+    fprintf(stderr, "memoria insufficiente\n");
+    return -1;
+  }
+
+  //Creazione dei thread scrittori
+  for(long i = 0; i < W; ++i){
+    if(pthread_create(&writers[i], NULL, Writer, (void *)i) != 0){
+      fprintf(stderr, "pthread_create Writer fallita\n");
+      return -1;
+    }
+  }
+
+  //Creazione dei thread lettori
+  for(long i = 0; i < R; i++){
+    if(pthread_create(&readers[i], NULL, Reader, (void *)i) != 0){
+      fprintf(stderr, "pthread_create Reader fallita\n");
+      return -1;
+    }
+  }
+  
+  //Attende la terminazione dei thread lettori
+  for (long i = 0; i < R; ++i){
+    if (pthread_join(readers[i], NULL) == -1){
+      fprintf(stderr, "pthread_join failed\n");
+    }
+  }
+  // Attende la terminazione dei thread scrittori
+  for (long i = 0; i < W; ++i){
+    if (pthread_join(writers[i], NULL) == -1){
+      fprintf(stderr, "pthread_join failed\n");
+    }
+  }
+
+  free(writers);
+  free(readers);
+  deleteQueue(orderingQ);
+  return 0;
+}

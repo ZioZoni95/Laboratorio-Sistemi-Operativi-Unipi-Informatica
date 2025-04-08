@@ -1,0 +1,1 @@
+CMakeLists.txt not found in \\wsl.localhost\ubuntu\home\antoninoc\Laboratorio-Sistemi-Operativi\LettScritt Select CMakeLists.txt

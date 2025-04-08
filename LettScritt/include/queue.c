@@ -227,7 +227,7 @@ void *top(Queue_t *q){
   LockQueue(q);
   //Se la coda è vuota, esce subito rilasciando il mutex
   if(q->head == q->tail){
-    UnlockQueue(q)
+    UnlockQueue(q);
     return NULL;
   }
   //A questo punto, la coda contiene almento un elemento
