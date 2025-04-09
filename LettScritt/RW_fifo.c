@@ -1,4 +1,4 @@
-//definizione della feature POSIX per utilizzare le API a partire da 2001
+﻿//definizione della feature POSIX per utilizzare le API a partire da 2001
 #define _POSIX_C_SOURCE 200112L
 
 #include <assert.h>
@@ -9,6 +9,8 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <time.h>
+#include <stddef.h>
+
 
 #include <queue.h> //Implementazione di una coda (FIFO) per la gestione degli accessi
 
