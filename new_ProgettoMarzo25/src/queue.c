@@ -1,57 +1,92 @@
-// src/queue.c
-#include "queue.h"
+#define _POSIX_C_SOURCE 200112L
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "queue.h"  // Si assume che il file queue.h definisca l’interfaccia per Queue_t
 
-Queue* queue_init(int capacity) {
-    Queue *q = malloc(sizeof(Queue));
-    if (!q) return NULL;
+// Definizione della struttura della coda (implementazione con buffer circolare)
+struct queue {
+    void **items;       // Array di puntatori agli elementi
+    int capacity;       // Capacità massima della coda
+    int front;          // Indice del primo elemento
+    int rear;           // Indice per l'inserimento del prossimo elemento
+    int count;          // Numero di elementi correnti nella coda
+};
 
-    q->head = malloc(sizeof(Node));
-    if (!q->head) { free(q); return NULL; }
-    q->head->data = NULL;
-    q->head->next = NULL;
-    q->tail = q->head;
-    q->size = 0;
+/// @brief Inizializza una coda non concorrente con la capacità specificata.
+/// @param capacity Dimensione massima della coda.
+/// @return Puntatore alla nuova coda allocata, oppure NULL in caso di errore.
+Queue_t* initQueue(int capacity) {
+    Queue_t *q = malloc(sizeof(Queue_t));
+    if (!q) {
+        perror("malloc");
+        return NULL;
+    }
+    q->items = malloc(sizeof(void*) * capacity);
+    if (!q->items) {
+        free(q);
+        perror("malloc");
+        return NULL;
+    }
     q->capacity = capacity;
+    q->front = 0;
+    q->rear = 0;
+    q->count = 0;
     return q;
 }
 
-void queue_destroy(Queue *q) {
-    Node *current = q->head;
-    while (current) {
-        Node *temp = current;
-        current = current->next;
-        free(temp);
+/// @brief Inserisce un elemento nella coda.
+/// @param q Puntatore alla coda.
+/// @param item Puntatore all'elemento da inserire.
+/// @return 0 se l'inserimento ha avuto successo, -1 se la coda è piena.
+int push(Queue_t *q, void *item) {
+    if(q->count == q->capacity) {
+        // Coda piena
+        return -1;
     }
-    free(q);
-}
-
-int queue_push(Queue *q, void *data) {
-    if (q->size >= q->capacity) return -1; // Coda piena
-
-    Node *new_node = malloc(sizeof(Node));
-    if (!new_node) return -1;
-    new_node->data = data;
-    new_node->next = NULL;
-
-    q->tail->next = new_node;
-    q->tail = new_node;
-    q->size++;
+    q->items[q->rear] = item;
+    q->rear = (q->rear + 1) % q->capacity;
+    q->count++;
     return 0;
 }
 
-void* queue_pop(Queue *q) {
-    if (q->size == 0) return NULL; // Coda vuota
-
-    Node *old_head = q->head;
-    void *data = old_head->next->data;
-    q->head = old_head->next;
-    q->size--;
-    free(old_head);
-    return data;
+/// @brief Estrae (rimuove) e restituisce l’elemento in testa alla coda.
+/// @param q Puntatore alla coda.
+/// @return Puntatore all’elemento in testa, oppure NULL se la coda è vuota.
+void* pop(Queue_t *q) {
+    if(q->count == 0) {
+        // Coda vuota
+        return NULL;
+    }
+    void* item = q->items[q->front];
+    q->front = (q->front + 1) % q->capacity;
+    q->count--;
+    return item;
 }
 
-unsigned long queue_size(const Queue *q) {
-    return q->size;
+/// @brief Restituisce (senza rimuovere) l’elemento in testa alla coda.
+/// @param q Puntatore alla coda.
+/// @return Puntatore all’elemento in testa, oppure NULL se la coda è vuota.
+void* top(Queue_t *q) {
+    if(q->count == 0) {
+        return NULL;
+    }
+    return q->items[q->front];
+}
+
+/// @brief Restituisce il numero di elementi attualmente presenti nella coda.
+/// @param q Puntatore alla coda.
+/// @return Numero di elementi in coda.
+int length(Queue_t *q) {
+    return q->count;
+}
+
+/// @brief Libera la memoria allocata per la coda.
+/// @param q Puntatore alla coda.
+void deleteQueue(Queue_t *q) {
+    if(q) {
+        free(q->items);
+        free(q);
+    }
 }

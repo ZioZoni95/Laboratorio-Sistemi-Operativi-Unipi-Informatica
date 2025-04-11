@@ -1,64 +1,67 @@
-// src/worker.c
-#include "worker.h"
-#include "group.h"
+#define _POSIX_C_SOURCE 200112L
+#include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include "worker.h"
+#include "queue.h"
 
-void* worker_run(void *arg) {
-    WorkerData *data = (WorkerData*)arg;
-    int partial = 0;
+extern Queue_t *workQueue;
+extern Queue_t *resultQueue;
+extern pthread_mutex_t q_mutex;
+extern pthread_cond_t not_empty;
+extern pthread_cond_t not_full;
+extern int finished;  /* 0 = false, 1 = true */
 
+void *worker_thread(void *arg) {
+    WorkerArg *warg = (WorkerArg *) arg;
+    int worker_id = warg->worker_id;
+    Parameters *params = warg->params;
+    int local_sum = 0;
+    
+    printf("[WORKER %d] Avvio del thread Worker\n", worker_id);
+    
     while (1) {
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        pthread_mutex_lock(&data->sync->mutex);
-
-        while (queue_size(data->queue) == 0 && !data->sync->production_done) {
-            printf("[%ld.%06ld] WORKER %d: Coda vuota, in attesa...\n",
-                   tv.tv_sec, tv.tv_usec, data->id);
-            pthread_cond_wait(&data->sync->not_empty, &data->sync->mutex);
+        pthread_mutex_lock(&q_mutex);
+        while (length(workQueue) == 0 && !finished) {
+            printf("[WORKER %d] WorkQueue vuota, attendo...\n", worker_id);
+            pthread_cond_wait(&not_empty, &q_mutex);
         }
-
-        if (data->sync->production_done && queue_size(data->queue) == 0) {
-            int *result = malloc(sizeof(int));
-            *result = partial;
-
-            while (queue_push(data->queue, result) == -1) {
-                printf("[%ld.%06ld] WORKER %d: Coda piena per risultato, attesa...\n",
-                       tv.tv_sec, tv.tv_usec, data->id);
-                pthread_cond_wait(&data->sync->not_full, &data->sync->mutex);
-            }
-
-            printf("[%ld.%06ld] WORKER %d: Terminato. Invio risultato: %d\n",
-                   tv.tv_sec, tv.tv_usec, data->id, *result);
-
-            pthread_cond_signal(&data->sync->all_done);
-            pthread_mutex_unlock(&data->sync->mutex);
+        if (length(workQueue) == 0 && finished) {
+            pthread_mutex_unlock(&q_mutex);
+            printf("[WORKER %d] Nessun lavoro e produzione finita, termino.\n", worker_id);
             break;
         }
-
-        Group *group = queue_pop(data->queue);
-        /*** Stampa delle coppie elaborate ***/
-        printf("[%ld.%06ld] WORKER %d: Prelevato gruppo %d-%d. Coppie: [",
-               tv.tv_sec, tv.tv_usec, data->id, group->start, group->end);
-
-        // Formattazione delle coppie
-        for(int i = group->start; i < group->end; i += 2) {
-            if(i + 1 < group->end) {
-                printf("(%d,%d)", group->array[i], group->array[i+1]);
-                if(i + 2 < group->end) printf(", ");
-            }
+        Group *group = (Group *) pop(workQueue);
+        printf("[WORKER %d] Estratto un gruppo dalla WorkQueue (rimanenti=%d)\n", worker_id, length(workQueue));
+        pthread_cond_signal(&not_full);
+        pthread_mutex_unlock(&q_mutex);
+        
+        for (int i = 0; i < group->num_pairs; i++) {
+            int a = group->pairs[i].a;
+            int b = group->pairs[i].b;
+            local_sum += a + b;
+            printf("[WORKER %d] Elaboro coppia (%d, %d) -> somma parziale = %d\n", worker_id, a, b, local_sum);
         }
-        printf("]\n");
-        /*************************************/
-
-
-        pthread_cond_signal(&data->sync->not_full);
-        pthread_mutex_unlock(&data->sync->mutex);
-
-        partial += group_sum(group);
-        printf("[%ld.%06ld] WORKER %d: Elaborato gruppo. Somma parziale: %d\n",
-               tv.tv_sec, tv.tv_usec, data->id, partial);
+        free(group);
     }
-
+    
+    int *result = malloc(sizeof(int));
+    if (!result) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    *result = local_sum;
+    printf("[WORKER %d] Totale parziale = %d, inserisco risultato nella ResultQueue\n", worker_id, local_sum);
+    
+    pthread_mutex_lock(&q_mutex);
+    while (length(resultQueue) >= params->C) {
+        printf("[WORKER %d] ResultQueue piena; attendo...\n", worker_id);
+        pthread_cond_wait(&not_full, &q_mutex);
+    }
+    push(resultQueue, result);
+    pthread_cond_signal(&not_empty);
+    pthread_mutex_unlock(&q_mutex);
+    
+    printf("[WORKER %d] Fine esecuzione del thread Worker\n", worker_id);
     return NULL;
 }

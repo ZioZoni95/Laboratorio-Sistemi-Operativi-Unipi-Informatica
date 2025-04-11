@@ -1,122 +1,83 @@
-/**
- * @file master.c
- * @brief Implementazione del thread Master con logging dettagliato
- */
-
-#include "master.h"
-#include "group.h"
+#define _POSIX_C_SOURCE 200112L
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+#include <pthread.h>
+#include "master.h"
+#include "queue.h"
 
-void* master_run(void *arg) {
-    MasterData *data = (MasterData*)arg;
-    struct timeval tv;
+extern Queue_t *workQueue;
+extern Queue_t *resultQueue;
+extern pthread_mutex_t q_mutex;
+extern pthread_cond_t not_empty;
+extern pthread_cond_t not_full;
+extern int finished;  /* 0 = false, 1 = true */
 
-    // 1. Creazione array dinamico (1..N)
-    int *array = malloc(data->N * sizeof(int));
-    if(!array) {
-        gettimeofday(&tv, NULL);
-        printf("[%ld.%06ld] MASTER: Errore allocazione array\n", tv.tv_sec, tv.tv_usec);
-        return NULL;
-    }
-
-    for(int i = 0; i < data->N; i++)
-        array[i] = i + 1; // Popola con valori 1..N
-
-    // 2. Suddivisione in gruppi
-    int total_groups;
-    Group *groups = group_split(array, data->N, data->k, &total_groups);
-    if(!groups) {
-        free(array);
-        gettimeofday(&tv, NULL);
-        printf("[%ld.%06ld] MASTER: Errore creazione gruppi\n", tv.tv_sec, tv.tv_usec);
-        return NULL;
-    }
-
-    // 3. Log iniziale
-    gettimeofday(&tv, NULL);
-    printf("[%ld.%06ld] MASTER: Inizio elaborazione\n", tv.tv_sec, tv.tv_usec);
-    printf("[%ld.%06ld] MASTER: Array creato [", tv.tv_sec, tv.tv_usec);
-    for(int i = 0; i < data->N; i++) {
-        printf("%d", array[i]);
-        if(i < data->N - 1) printf(", ");
-    }
-    printf("]\n");
-    printf("[%ld.%06ld] MASTER: Generati %d gruppi (k=%d coppie/gruppo)\n",
-           tv.tv_sec, tv.tv_usec, total_groups, data->k);
-
-    // 4. Stampa dettagli gruppi
-    for(int i = 0; i < total_groups; i++) {
-        gettimeofday(&tv, NULL);
-        printf("[%ld.%06ld] MASTER: Gruppo %d - Coppie: [", tv.tv_sec, tv.tv_usec, i);
-
-        for(int j = groups[i].start; j < groups[i].end; j += 2) {
-            if(j + 1 < groups[i].end)
-                printf("(%d,%d)", array[j], array[j+1]);
-            if(j + 2 < groups[i].end) printf(", ");
+void *master_thread(void *arg) {
+    Parameters *params = (Parameters*) arg;
+    int current_index = 0;
+    
+    printf("[MASTER] Avvio del thread Master con N=%d, k=%d\n", params->N, params->k);
+    
+    while (current_index < params->N) {
+        Group *group = malloc(sizeof(Group));
+        if (!group) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
         }
-        printf("] (indici %d-%d)\n", groups[i].start, groups[i].end);
-    }
-
-    // 5. Inserimento gruppi nella coda
-    for(int i = 0; i < total_groups; i++) {
-        pthread_mutex_lock(&data->sync->mutex);
-
-        // Attende se la coda è piena
-        while(queue_size(data->queue) >= data->queue->capacity) {
-            gettimeofday(&tv, NULL);
-            printf("[%ld.%06ld] MASTER: Coda piena (%lu/%d), in attesa...\n",
-                   tv.tv_sec, tv.tv_usec, queue_size(data->queue), data->queue->capacity);
-            pthread_cond_wait(&data->sync->not_full, &data->sync->mutex);
+        group->num_pairs = 0;
+        printf("[MASTER] Creazione di un nuovo gruppo a partire dall'indice %d\n", current_index);
+        
+        while (group->num_pairs < params->k && (current_index + 1) < params->N) {
+            group->pairs[group->num_pairs].a = params->array[current_index];
+            group->pairs[group->num_pairs].b = params->array[current_index + 1];
+            printf("[MASTER] Aggiunta coppia (%d, %d) al gruppo\n",
+                   params->array[current_index],
+                   params->array[current_index + 1]);
+            group->num_pairs++;
+            current_index += 2;
         }
-
-        // Inserisce il gruppo
-        queue_push(data->queue, &groups[i]);
-        gettimeofday(&tv, NULL);
-        printf("[%ld.%06ld] MASTER: Inserito gruppo %d in coda\n",
-               tv.tv_sec, tv.tv_usec, i);
-
-        pthread_cond_signal(&data->sync->not_empty);
-        pthread_mutex_unlock(&data->sync->mutex);
-    }
-
-    // 6. Notifica fine produzione
-    gettimeofday(&tv, NULL);
-    printf("[%ld.%06ld] MASTER: Fine produzione gruppi\n", tv.tv_sec, tv.tv_usec);
-    pthread_mutex_lock(&data->sync->mutex);
-    data->sync->production_done = true;
-    pthread_cond_broadcast(&data->sync->not_empty);
-    pthread_mutex_unlock(&data->sync->mutex);
-
-    // 7. Raccolta risultati
-    int total = 0;
-    for(int i = 0; i < data->worker_count; i++) {
-        pthread_mutex_lock(&data->sync->mutex);
-
-        while(queue_size(data->queue) == 0) {
-            gettimeofday(&tv, NULL);
-            printf("[%ld.%06ld] MASTER: Attesa risultati parziali...\n",
-                   tv.tv_sec, tv.tv_usec);
-            pthread_cond_wait(&data->sync->all_done, &data->sync->mutex);
+        
+        if ((current_index < params->N) && (params->N - current_index == 1)) {
+            group->pairs[group->num_pairs].a = params->array[current_index];
+            group->pairs[group->num_pairs].b = 0;
+            printf("[MASTER] Aggiunta coppia incompleta (%d, 0) al gruppo\n",
+                   params->array[current_index]);
+            group->num_pairs++;
+            current_index++;
         }
-
-        int *partial = queue_pop(data->queue);
-        gettimeofday(&tv, NULL);
-        printf("[%ld.%06ld] MASTER: Ricevuto risultato parziale: %d\n",
-               tv.tv_sec, tv.tv_usec, *partial);
-
-        total += *partial;
+        
+        pthread_mutex_lock(&q_mutex);
+        while (length(workQueue) >= params->C) {
+            printf("[MASTER] WorkQueue piena (%d elementi); attendo...\n", length(workQueue));
+            pthread_cond_wait(&not_full, &q_mutex);
+        }
+        push(workQueue, group);
+        printf("[MASTER] Inserito gruppo con %d coppie nella WorkQueue (size=%d)\n", group->num_pairs, length(workQueue));
+        pthread_cond_signal(&not_empty);
+        pthread_mutex_unlock(&q_mutex);
+    }
+    
+    pthread_mutex_lock(&q_mutex);
+    finished = 1;
+    printf("[MASTER] Fine produzione. Notifico tutti i Worker.\n");
+    pthread_cond_broadcast(&not_empty);
+    pthread_mutex_unlock(&q_mutex);
+    
+    int total_sum = 0;
+    for (int i = 0; i < params->numWorkers; i++) {
+        pthread_mutex_lock(&q_mutex);
+        while (length(resultQueue) == 0) {
+            printf("[MASTER] Attendo risultati parziali, resultQueue vuota...\n");
+            pthread_cond_wait(&not_empty, &q_mutex);
+        }
+        int *partial = (int *) pop(resultQueue);
+        printf("[MASTER] Ricevuto risultato parziale: %d\n", *partial);
+        pthread_cond_signal(&not_full);
+        pthread_mutex_unlock(&q_mutex);
+        total_sum += *partial;
         free(partial);
-        pthread_mutex_unlock(&data->sync->mutex);
     }
-
-    // 8. Output finale e cleanup
-    gettimeofday(&tv, NULL);
-    printf("[%ld.%06ld] MASTER: Somma finale calcolata: %d\n",
-           tv.tv_sec, tv.tv_usec, total);
-
-    free(groups);
-    free(array);
+    
+    printf("[MASTER] Somma finale: %d\n", total_sum);
     return NULL;
 }
