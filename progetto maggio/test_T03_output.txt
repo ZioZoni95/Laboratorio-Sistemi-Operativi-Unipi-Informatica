@@ -1,0 +1,172 @@
+[PROG] Programma avviato.
+[PROG] Argomenti parsati: N=50, W=4
+Avvio parallel_sort con N=50 elementi e W=4 worker (da -w).
+[PROG] Allocazione memoria per array principale e temporaneo...
+[PROG] Allocazione array completata.
+Inizializzazione array...
+[PROG] Inizializzazione array completata.
+--- Array Iniziale (N=50) ---
+[391, 180, 490, 21, 455, 258, 162, 271, 214, 362, 440, 158, 64, 405, 128, ..., 491, 77, 437, 114, 144, 299, 54, 154, 215, 311, 134, 317, 82, 417, 134]
+-------------------------
+[PROG] Inizializzazione Coda Concorrente...
+[PROG] Inizializzazione coda...
+[PROG] Coda inizializzata.
+[PROG] Inizializzazione Barriera (per 4 worker)...
+[PROG] Coda e Barriera inizializzate.
+[PROG] Allocazione memoria per argomenti e ID thread...
+[PROG] Allocazione completata.
+Creazione di 4 thread worker (da -w)...
+[PROG] Creazione thread 0...
+[PROG] Creazione thread 1...
+[Worker: 0] Worker avviato.
+[Worker: 0] Calcolo e inserimento partizioni iniziali (P=4)...
+[PROG] Creazione thread 2...
+[Worker: 0] Inseriti 4 task iniziali. Chiusura coda...
+[PROG] CLOSE_QUEUE: Flag 'closed' impostato.
+[Worker: 0] Inizio fase sorting (ciclo pop/qsort)...
+[Worker: 0] Pop OK: Task(0, 12). Eseguo qsort...
+[Worker: 0] Pop OK: Task(13, 25). Eseguo qsort...
+[Worker: 0] Pop OK: Task(26, 37). Eseguo qsort...
+[Worker: 0] Pop OK: Task(38, 49). Eseguo qsort...
+[Worker: 0] Fase sorting terminata. Processati 4 task.
+[Worker: 0] Attesa su BARRIERA 1 (post-sorting)...
+[Worker: 1] Worker avviato.
+[Worker: 1] Inizio fase sorting (ciclo pop/qsort)...
+[Worker: 1] Fase sorting terminata. Processati 0 task.
+[Worker: 1] Attesa su BARRIERA 1 (post-sorting)...
+[PROG] Creazione thread 3...
+[Worker: 2] Worker avviato.
+[Worker: 2] Inizio fase sorting (ciclo pop/qsort)...
+[Worker: 2] Fase sorting terminata. Processati 0 task.
+[Worker: 2] Attesa su BARRIERA 1 (post-sorting)...
+Attesa terminazione thread (join)...
+[PROG] Join sul thread 0...
+[Worker: 3] Worker avviato.
+[Worker: 3] Inizio fase sorting (ciclo pop/qsort)...
+[Worker: 3] Fase sorting terminata. Processati 0 task.
+[Worker: 3] Attesa su BARRIERA 1 (post-sorting)...
+[Worker: 0] Superata BARRIERA 1 (post-sorting).
+--- Array dopo Fase Sorting (Partizioni ordinate) (N=50) ---
+[21, 64, 158, 162, 180, 214, 258, 271, 362, 391, 440, 455, 490, 8, 101, ..., 476, 488, 491, 54, 82, 114, 134, 134, 144, 154, 215, 299, 311, 317, 417]
+-------------------------
+[Worker: 0] Inizio fase merge...
+[Worker: 0] Numero passi di merge necessari: 2
+[Worker: 0] --- Inizio Passo Merge k=0 ---
+[Worker: 0] [Step 0] ATTIVO (tid=0 < active=2). Calcolo indici merge...
+[Worker: 0] [Step 0] Eseguo merge: Blocco1 (0-12), Blocco2 (13-25) -> temp_array
+[Worker: 0] [Step 0] merge_sections completato.
+[Worker: 0] [Step 0] Attesa su BARRIERA 2 (post-step)...
+[Worker: 3] Sono l'ultimo thread alla BARRIERA 1.
+[Worker: 3] Superata BARRIERA 1 (post-sorting).
+[Worker: 3] Inizio fase merge...
+[Worker: 3] Numero passi di merge necessari: 2
+[Worker: 3] --- Inizio Passo Merge k=0 ---
+[Worker: 3] [Step 0] INATTIVO.
+[Worker: 3] [Step 0] Attesa su BARRIERA 2 (post-step)...
+[Worker: 1] Superata BARRIERA 1 (post-sorting).
+[Worker: 1] Inizio fase merge...
+[Worker: 1] Numero passi di merge necessari: 2
+[Worker: 1] --- Inizio Passo Merge k=0 ---
+[Worker: 1] [Step 0] ATTIVO (tid=1 < active=2). Calcolo indici merge...
+[Worker: 1] [Step 0] Eseguo merge: Blocco1 (26-37), Blocco2 (38-49) -> temp_array
+[Worker: 1] [Step 0] merge_sections completato.
+[Worker: 1] [Step 0] Attesa su BARRIERA 2 (post-step)...
+[Worker: 2] Superata BARRIERA 1 (post-sorting).
+[Worker: 2] Inizio fase merge...
+[Worker: 2] Numero passi di merge necessari: 2
+[Worker: 2] --- Inizio Passo Merge k=0 ---
+[Worker: 2] [Step 0] INATTIVO.
+[Worker: 2] [Step 0] Attesa su BARRIERA 2 (post-step)...
+[Worker: 0] [Step 0] Superata BARRIERA 2.
+--- Array dopo Sincronizzazione Passo Merge k=0 (N=50) ---
+[21, 64, 158, 162, 180, 214, 258, 271, 362, 391, 440, 455, 490, 8, 101, ..., 476, 488, 491, 54, 82, 114, 134, 134, 144, 154, 215, 299, 311, 317, 417]
+-------------------------
+[Worker: 0] [Step 0] Copio risultato merge da tERRORE: l'array NON è ordinato! array[37]=491 > array[38]=54
+[DEBUG] Elementi intorno all'errore:
+[DEBUG] array[27] = 405
+[DEBUG] array[28] = 421
+[DEBUG] array[29] = 423
+[DEBUG] array[30] = 437
+[DEBUG] array[31] = 440
+[DEBUG] array[32] = 455
+[DEBUG] array[33] = 465
+[DEBUG] array[34] = 476
+[DEBUG] array[35] = 488
+[DEBUG] array[36] = 490
+[DEBUG] array[37] = 491 <<<
+[DEBUG] array[38] = 54 <<<
+[DEBUG] array[39] = 82
+[DEBUG] array[40] = 114
+[DEBUG] array[41] = 134
+[DEBUG] array[42] = 134
+[DEBUG] array[43] = 144
+[DEBUG] array[44] = 154
+[DEBUG] array[45] = 215
+[DEBUG] array[46] = 299
+[DEBUG] array[47] = 311
+emp a array [0...25] (104 bytes)
+[Worker: 0] --- Fine Passo Merge k=0 ---
+[Worker: 0] --- Inizio Passo Merge k=1 ---
+[Worker: 0] [Step 1] ATTIVO (tid=0 < active=1). Calcolo indici merge...
+[Worker: 0] [Step 1] Eseguo merge: Blocco1 (0-25), Blocco2 (26-49) -> temp_array
+[Worker: 0] [Step 1] merge_sections completato.
+[Worker: 0] [Step 1] Attesa su BARRIERA 2 (post-step)...
+[Worker: 3] [Step 0] Superata BARRIERA 2.
+[Worker: 3] --- Fine Passo Merge k=0 ---
+[Worker: 3] --- Inizio Passo Merge k=1 ---
+[Worker: 3] [Step 1] INATTIVO.
+[Worker: 3] [Step 1] Attesa su BARRIERA 2 (post-step)...
+[Worker: 2] [Step 0] Sono l'ultimo thread alla BARRIERA 2.
+[Worker: 2] [Step 0] Superata BARRIERA 2.
+[Worker: 2] --- Fine Passo Merge k=0 ---
+[Worker: 2] --- Inizio Passo Merge k=1 ---
+[Worker: 2] [Step 1] INATTIVO.
+[Worker: 2] [Step 1] Attesa su BARRIERA 2 (post-step)...
+[Worker: 1] [Step 0] Superata BARRIERA 2.
+[Worker: 1] [Step 0] Copio risultato merge da temp a array [26...49] (96 bytes)
+[Worker: 1] --- Fine Passo Merge k=0 ---
+[Worker: 1] --- Inizio Passo Merge k=1 ---
+[Worker: 1] [Step 1] INATTIVO.
+[Worker: 1] [Step 1] Attesa su BARRIERA 2 (post-step)...
+[Worker: 0] [Step 1] Superata BARRIERA 2.
+--- Array dopo Sincronizzazione Passo Merge k=1 (N=50) ---
+[8, 21, 64, 101, 119, 128, 158, 158, 162, 180, 214, 246, 258, 266, 270, ..., 488, 490, 491, 54, 82, 114, 134, 134, 144, 154, 215, 299, 311, 317, 417]
+-------------------------
+[Worker: 0] [Step 1] Copio risultato merge da temp a array [0...49] (200 bytes)
+[Worker: 0] --- Fine Passo Merge k=1 ---
+[Worker: 0] Fase merge terminata.
+[Worker: 0] Worker terminato.
+[Worker: 3] [Step 1] Superata BARRIERA 2.
+[Worker: 3] --- Fine Passo Merge k=1 ---
+[Worker: 1] [Step 1] Sono l'ultimo thread alla BARRIERA 2.
+[Worker: 3] Fase merge terminata.
+[Worker: 1] [Step 1] Superata BARRIERA 2.
+[Worker: 3] Worker terminato.
+[Worker: 1] --- Fine Passo Merge k=1 ---
+[Worker: 1] Fase merge terminata.
+[Worker: 1] Worker terminato.
+[Worker: 2] [Step 1] Superata BARRIERA 2.
+[Worker: 2] --- Fine Passo Merge k=1 ---
+[Worker: 2] Fase merge terminata.
+[Worker: 2] Worker terminato.
+[PROG] Join completato per thread 0.
+[PROG] Join sul thread 1...
+[PROG] Join completato per thread 1.
+[PROG] Join sul thread 2...
+[PROG] Join completato per thread 2.
+[PROG] Join sul thread 3...
+[PROG] Join completato per thread 3.
+Tutti i thread hanno terminato.
+--- Array Finale (N=50) ---
+[4, 8, 21, 64, 77, 101, 119, 128, 158, 158, 158, 162, 179, 180, 184, ..., 488, 490, 491, 54, 82, 114, 134, 134, 144, 154, 215, 299, 311, 317, 417]
+-------------------------
+[PROG] Inizio verifica ordinamento array...
+Verifica: ERRORE, l'array NON è ordinato!
+[PROG] Verifica ordinamento completata.
+[PROG] Inizio cleanup risorse...
+Pulizia risorse...
+[PROG] Distruzione coda...
+[PROG] Liberati 0 nodi rimanenti.
+[PROG] Coda distrutta.
+[PROG] Cleanup completato.
+Esecuzione terminata con successo.

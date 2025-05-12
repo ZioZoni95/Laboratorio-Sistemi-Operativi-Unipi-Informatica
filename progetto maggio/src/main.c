@@ -10,7 +10,7 @@
 // Funzione principale del programma
 int main(int argc, char *argv[]) {
     long n = 0; // Numero elementi array (N) - Da opzione -n
-    int p = 0; // Numero thread worker (P) - Da opzione -p
+    int p = 0; // Numero thread worker (P) - Da opzione -w (precedentemente -p)
     int opt; // Variabile per getopt
 
     DEBUG_PRINT_GEN("Programma avviato.");
@@ -18,39 +18,47 @@ int main(int argc, char *argv[]) {
     // ----------------------------------------------------------------------
     // Parsing Argomenti Riga di Comando
     // Testo Esame: "Il programma dovrà gestire le seguenti opzioni:
-    //              1.Numero di thread Worker (minimo 1).
-    //              2.Dimensione dell'array ... (N)."
+    //              1.Numero di thread Worker (minimo 1). -> ora opzione -w
+    //              2.Dimensione dell'array ... (N)."      -> opzione -n
     // ----------------------------------------------------------------------
-    while ((opt = getopt(argc, argv, "n:p:")) != -1) {
+    // Modifica: Cambiato "n:p:" in "n:w:"
+    while ((opt = getopt(argc, argv, "n:w:")) != -1) {
         switch (opt) {
             case 'n': // Opzione -n per il numero di elementi
                 n = atol(optarg); // Converte l'argomento in long
                 break;
-            case 'p': // Opzione -p per il numero di thread
+            // Modifica: Cambiato case 'p' in case 'w'
+            case 'w': // Opzione -w per il numero di worker
                 p = atoi(optarg); // Converte l'argomento in int
                 break;
             default: /* '?' o ':' */
-                fprintf(stderr, "Uso: %s -n <num_elementi> -p <num_thread>\n", argv[0]);
+                // Modifica: Aggiornato messaggio d'uso
+                fprintf(stderr, "Uso: %s -n <num_elementi> -w <num_worker>\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
-    DEBUG_PRINT_GEN("Argomenti parsati: N=%ld, P=%d", n, p);
+    // Modifica: Aggiornato messaggio debug
+    DEBUG_PRINT_GEN("Argomenti parsati: N=%ld, W=%d", n, p);
 
     // Controllo validità argomenti
     if (n <= 0 || p <= 0) {
-        fprintf(stderr, "Errore: Specificare -n <num_elementi> (positivo) e -p <num_thread> (positivo).\n");
+        // Modifica: Aggiornato messaggio d'errore
+        fprintf(stderr, "Errore: Specificare -n <num_elementi> (positivo) e -w <num_worker> (positivo).\n");
         exit(EXIT_FAILURE);
     }
     // Controllo se P è potenza di 2 (richiesto dalla logica di merge implementata)
+    // Nessuna modifica qui, la variabile 'p' contiene il numero di worker
     if ((p > 0) && ((p & (p - 1)) != 0)) {
-        fprintf(stderr, "Errore: Il numero di thread P=%d deve essere una potenza di 2 per questa implementazione.\n", p);
+        fprintf(stderr, "Errore: Il numero di worker W=%d deve essere una potenza di 2 per questa implementazione.\n", p);
         exit(EXIT_FAILURE);
     }
 
-    printf("Avvio parallel_sort con N=%ld elementi e P=%d thread.\n", n, p);
+    // Modifica: Aggiornato messaggio informativo
+    printf("Avvio parallel_sort con N=%ld elementi e W=%d worker (da -w).\n", n, p);
 
     // ----------------------------------------------------------------------
     // Allocazione Memoria e Inizializzazione Strutture Dati
+    // (Nessuna modifica necessaria in questa sezione)
     // ----------------------------------------------------------------------
     DEBUG_PRINT_GEN("Allocazione memoria per array principale e temporaneo...");
     int *array = malloc(n * sizeof(int));
@@ -77,10 +85,10 @@ int main(int argc, char *argv[]) {
     CHECK_ERR(init_queue(&queue) != 0, "Errore inizializzazione coda");
 
     // Inizializzazione Barriera Pthreads
-    // Testo Esame: "...implementazione della funzione barrier -- ad esempio usando pthread_barrier_wait--"
-    DEBUG_PRINT_GEN("Inizializzazione Barriera (per %d threads)...", p);
+    // Nessuna modifica qui, 'p' contiene ancora il numero corretto
+    DEBUG_PRINT_GEN("Inizializzazione Barriera (per %d worker)...", p);
     pthread_barrier_t barrier;
-    int err = pthread_barrier_init(&barrier, NULL, p); // Inizializza per P thread
+    int err = pthread_barrier_init(&barrier, NULL, p); // Inizializza per P worker
     CHECK_PTHREAD_ERR(err, "Errore pthread_barrier_init");
     DEBUG_PRINT_GEN("Coda e Barriera inizializzate.");
 
@@ -94,15 +102,18 @@ int main(int argc, char *argv[]) {
 
     // ----------------------------------------------------------------------
     // Creazione Thread Worker
+    // (Nessuna modifica necessaria nel loop o negli argomenti passati,
+    // 'p' contiene ancora il numero corretto di worker)
     // ----------------------------------------------------------------------
-    printf("Creazione di %d thread worker...\n", p);
+    // Modifica: Aggiornato messaggio informativo
+    printf("Creazione di %d thread worker (da -w)...\n", p);
     for (int i = 0; i < p; ++i) {
         // Prepara gli argomenti per il thread i
         thread_args[i].thread_id = i;
         thread_args[i].array = array;
         thread_args[i].temp_array = temp_array;
         thread_args[i].n_elements = n;
-        thread_args[i].n_threads = p;
+        thread_args[i].n_threads = p; // 'p' è il numero totale di worker
         thread_args[i].queue = &queue;
         thread_args[i].barrier = &barrier;
         DEBUG_PRINT_GEN("Creazione thread %d...", i);
@@ -113,6 +124,7 @@ int main(int argc, char *argv[]) {
 
     // ----------------------------------------------------------------------
     // Attesa Terminazione Thread (Join)
+    // (Nessuna modifica necessaria)
     // ----------------------------------------------------------------------
     printf("Attesa terminazione thread (join)...\n");
     for (int i = 0; i < p; ++i) {
@@ -128,8 +140,7 @@ int main(int argc, char *argv[]) {
 
     // ----------------------------------------------------------------------
     // Verifica Correttezza Ordinamento
-    // Testo Esame: "...compila ma non esegue l'ordinamento in modo corretto...,
-    //              il codice non verrà valutato." (Implica necessità di verifica)
+    // (Nessuna modifica necessaria)
     // ----------------------------------------------------------------------
     DEBUG_PRINT_GEN("Inizio verifica ordinamento array...");
     int sorted = 1; // Flag per indicare se l'array è ordinato
@@ -160,6 +171,7 @@ int main(int argc, char *argv[]) {
 
     // ----------------------------------------------------------------------
     // Cleanup Risorse
+    // (Nessuna modifica necessaria)
     // ----------------------------------------------------------------------
     DEBUG_PRINT_GEN("Inizio cleanup risorse...");
     printf("Pulizia risorse...\n");
