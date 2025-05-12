@@ -1,3 +1,0 @@
-Errore: Il numero di worker W=7 deve essere una potenza di 2 per questa implementazione.
-[PROG] Programma avviato.
-[PROG] Argomenti parsati: N=50, W=7

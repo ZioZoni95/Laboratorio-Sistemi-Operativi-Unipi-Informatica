@@ -66,6 +66,8 @@ typedef struct {
     int n_threads;          // Numero totale di thread Worker (P)
     ConcurrentQueue *queue; // Puntatore alla coda concorrente condivisa (Q)
     pthread_barrier_t *barrier; // Puntatore alla barriera di sincronizzazione condivisa
+    pthread_mutex_t *merge_mutex_ptr;
+
 } ThreadArgs;
 
 #endif // COMMON_H

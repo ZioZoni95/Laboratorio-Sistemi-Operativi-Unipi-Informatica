@@ -1,5 +1,16 @@
+/**
+ * @file main.c
+ * @brief Programma principale per l'ordinamento parallelo di un array.
+ *
+ * Gestisce il parsing degli argomenti, l'allocazione delle risorse,
+ * la creazione e la gestione dei thread worker, la verifica finale
+ * e il cleanup. Introduce una mutex per serializzare le operazioni
+ * di merge su temp_array, come tentativo di risolvere una race condition.
+ */
+
 #include <unistd.h> // Per getopt()
 #include <time.h>   // Per srand(), time()
+#include <pthread.h> // Per pthread_mutex_t
 
 // Include i nostri header locali
 #include "common.h"
@@ -7,92 +18,85 @@
 #include "worker.h"
 #include "myutils.h"
 
+// Dichiarazione della mutex globale per la fase di merge su temp_array
+// Questa mutex verrà usata per serializzare le chiamate a merge_sections
+// per prevenire race condition durante la scrittura su temp_array.
+pthread_mutex_t merge_temp_array_mutex;
+
 // Funzione principale del programma
 int main(int argc, char *argv[]) {
     long n = 0; // Numero elementi array (N) - Da opzione -n
-    int p = 0; // Numero thread worker (P) - Da opzione -w (precedentemente -p)
+    int p = 0; // Numero thread worker (P) - Da opzione -w
     int opt; // Variabile per getopt
+    int err; // Variabile per controllo errori pthread
 
     DEBUG_PRINT_GEN("Programma avviato.");
 
-    // ----------------------------------------------------------------------
-    // Parsing Argomenti Riga di Comando
-    // Testo Esame: "Il programma dovrà gestire le seguenti opzioni:
-    //              1.Numero di thread Worker (minimo 1). -> ora opzione -w
-    //              2.Dimensione dell'array ... (N)."      -> opzione -n
-    // ----------------------------------------------------------------------
-    // Modifica: Cambiato "n:p:" in "n:w:"
+    // --- Parsing Argomenti Riga di Comando ---
     while ((opt = getopt(argc, argv, "n:w:")) != -1) {
         switch (opt) {
-            case 'n': // Opzione -n per il numero di elementi
-                n = atol(optarg); // Converte l'argomento in long
+            case 'n':
+                n = atol(optarg);
                 break;
-            // Modifica: Cambiato case 'p' in case 'w'
-            case 'w': // Opzione -w per il numero di worker
-                p = atoi(optarg); // Converte l'argomento in int
+            case 'w':
+                p = atoi(optarg);
                 break;
-            default: /* '?' o ':' */
-                // Modifica: Aggiornato messaggio d'uso
+            default:
                 fprintf(stderr, "Uso: %s -n <num_elementi> -w <num_worker>\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
-    // Modifica: Aggiornato messaggio debug
-    DEBUG_PRINT_GEN("Argomenti parsati: N=%ld, W=%d", n, p);
+    DEBUG_PRINT_GEN("Argomenti parsati: N=%ld, P=%d (da -w)", n, p);
 
-    // Controllo validità argomenti
+    // --- Controllo Validità Argomenti ---
     if (n <= 0 || p <= 0) {
-        // Modifica: Aggiornato messaggio d'errore
         fprintf(stderr, "Errore: Specificare -n <num_elementi> (positivo) e -w <num_worker> (positivo).\n");
         exit(EXIT_FAILURE);
     }
-    // Controllo se P è potenza di 2 (richiesto dalla logica di merge implementata)
-    // Nessuna modifica qui, la variabile 'p' contiene il numero di worker
     if ((p > 0) && ((p & (p - 1)) != 0)) {
-        fprintf(stderr, "Errore: Il numero di worker W=%d deve essere una potenza di 2 per questa implementazione.\n", p);
+        fprintf(stderr, "Errore: Il numero di worker P=%d (da -w) deve essere una potenza di 2 per questa implementazione.\n", p);
         exit(EXIT_FAILURE);
     }
 
-    // Modifica: Aggiornato messaggio informativo
-    printf("Avvio parallel_sort con N=%ld elementi e W=%d worker (da -w).\n", n, p);
+    printf("Avvio parallel_sort con N=%ld elementi e P=%d worker (da -w).\n", n, p);
 
-    // ----------------------------------------------------------------------
-    // Allocazione Memoria e Inizializzazione Strutture Dati
-    // (Nessuna modifica necessaria in questa sezione)
-    // ----------------------------------------------------------------------
+    // --- Allocazione Memoria ---
     DEBUG_PRINT_GEN("Allocazione memoria per array principale e temporaneo...");
     int *array = malloc(n * sizeof(int));
     CHECK_ERR(array == NULL, "Errore allocazione array principale");
-    int *temp_array = malloc(n * sizeof(int)); // Necessario per il merge out-of-place
+    int *temp_array = malloc(n * sizeof(int));
     CHECK_ERR(temp_array == NULL, "Errore allocazione array temporaneo");
     DEBUG_PRINT_GEN("Allocazione array completata.");
 
-    // Inizializzazione array con numeri casuali
-    srand(time(NULL)); // Inizializza generatore casuale
+    // --- Inizializzazione Array Casuale ---
+    srand(time(NULL));
     printf("Inizializzazione array...\n");
     for (long i = 0; i < n; ++i) {
-        array[i] = rand() % (n * 10); // Valori casuali in un range ragionevole
+        array[i] = rand() % (n * 10);
     }
     DEBUG_PRINT_GEN("Inizializzazione array completata.");
-
     #if DEBUG
-    print_array("Array Iniziale", array, n); // Stampa array iniziale se in debug
+    print_array("Array Iniziale", array, n);
     #endif
 
-    // Inizializzazione Coda Concorrente (Q)
+    // --- Inizializzazione Strutture di Sincronizzazione ---
     DEBUG_PRINT_GEN("Inizializzazione Coda Concorrente...");
     ConcurrentQueue queue;
     CHECK_ERR(init_queue(&queue) != 0, "Errore inizializzazione coda");
 
-    // Inizializzazione Barriera Pthreads
-    // Nessuna modifica qui, 'p' contiene ancora il numero corretto
     DEBUG_PRINT_GEN("Inizializzazione Barriera (per %d worker)...", p);
     pthread_barrier_t barrier;
-    int err = pthread_barrier_init(&barrier, NULL, p); // Inizializza per P worker
+    err = pthread_barrier_init(&barrier, NULL, p);
     CHECK_PTHREAD_ERR(err, "Errore pthread_barrier_init");
-    DEBUG_PRINT_GEN("Coda e Barriera inizializzate.");
 
-    // Allocazione strutture per argomenti e ID dei thread
+    // Inizializzazione della mutex per la fase di merge
+    DEBUG_PRINT_GEN("Inizializzazione Mutex per Merge...");
+    err = pthread_mutex_init(&merge_temp_array_mutex, NULL);
+    CHECK_PTHREAD_ERR(err, "Errore pthread_mutex_init for merge_temp_array_mutex");
+
+    DEBUG_PRINT_GEN("Coda, Barriera e Mutex Merge inizializzate.");
+
+    // --- Preparazione Argomenti Thread ---
     DEBUG_PRINT_GEN("Allocazione memoria per argomenti e ID thread...");
     ThreadArgs *thread_args = malloc(p * sizeof(ThreadArgs));
     CHECK_ERR(thread_args == NULL, "Errore allocazione ThreadArgs");
@@ -100,57 +104,43 @@ int main(int argc, char *argv[]) {
     CHECK_ERR(threads == NULL, "Errore allocazione pthread_t");
     DEBUG_PRINT_GEN("Allocazione completata.");
 
-    // ----------------------------------------------------------------------
-    // Creazione Thread Worker
-    // (Nessuna modifica necessaria nel loop o negli argomenti passati,
-    // 'p' contiene ancora il numero corretto di worker)
-    // ----------------------------------------------------------------------
-    // Modifica: Aggiornato messaggio informativo
+    // --- Creazione Thread Worker ---
     printf("Creazione di %d thread worker (da -w)...\n", p);
     for (int i = 0; i < p; ++i) {
-        // Prepara gli argomenti per il thread i
         thread_args[i].thread_id = i;
         thread_args[i].array = array;
         thread_args[i].temp_array = temp_array;
         thread_args[i].n_elements = n;
-        thread_args[i].n_threads = p; // 'p' è il numero totale di worker
+        thread_args[i].n_threads = p;
         thread_args[i].queue = &queue;
         thread_args[i].barrier = &barrier;
+        thread_args[i].merge_mutex_ptr = &merge_temp_array_mutex; // Passa il puntatore alla mutex
         DEBUG_PRINT_GEN("Creazione thread %d...", i);
-        // Crea il thread che eseguirà la funzione 'worker_thread'
         err = pthread_create(&threads[i], NULL, worker_thread, &thread_args[i]);
         CHECK_PTHREAD_ERR(err, "Errore creazione thread");
     }
 
-    // ----------------------------------------------------------------------
-    // Attesa Terminazione Thread (Join)
-    // (Nessuna modifica necessaria)
-    // ----------------------------------------------------------------------
+    // --- Attesa Terminazione Thread (Join) ---
     printf("Attesa terminazione thread (join)...\n");
     for (int i = 0; i < p; ++i) {
         DEBUG_PRINT_GEN("Join sul thread %d...", i);
-        pthread_join(threads[i], NULL); // Attende che il thread i termini
+        pthread_join(threads[i], NULL);
         DEBUG_PRINT_GEN("Join completato per thread %d.", i);
     }
     printf("Tutti i thread hanno terminato.\n");
 
     #if DEBUG
-    print_array("Array Finale", array, n); // Stampa array finale se in debug
+    print_array("Array Finale", array, n);
     #endif
 
-    // ----------------------------------------------------------------------
-    // Verifica Correttezza Ordinamento
-    // (Nessuna modifica necessaria)
-    // ----------------------------------------------------------------------
+    // --- Verifica Correttezza Ordinamento ---
     DEBUG_PRINT_GEN("Inizio verifica ordinamento array...");
-    int sorted = 1; // Flag per indicare se l'array è ordinato
+    int sorted = 1;
     for (long i = 0; i < n - 1; ++i) {
-        // Controlla se un elemento è maggiore del successivo
         if (array[i] > array[i + 1]) {
             fprintf(stderr, "ERRORE: l'array NON è ordinato! array[%ld]=%d > array[%ld]=%d\n",
                     i, array[i], i + 1, array[i + 1]);
-            sorted = 0;
-            #if DEBUG // Stampa contesto errore solo in debug
+            #if DEBUG
             long start_print = (i > 10) ? i - 10 : 0;
             long end_print = (i + 10 < n) ? i + 10 : n -1;
             fprintf(stderr, "[DEBUG] Elementi intorno all'errore:\n");
@@ -158,10 +148,10 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "[DEBUG] array[%ld] = %d%s\n", j, array[j], (j==i || j==i+1) ? " <<<" : "");
             }
             #endif
-            break; // Esce al primo errore trovato
+            sorted = 0;
+            break;
         }
     }
-    // Stampa messaggio finale sulla verifica
     if (sorted) {
         printf("Verifica: L'array è ordinato correttamente.\n");
     } else {
@@ -169,20 +159,18 @@ int main(int argc, char *argv[]) {
     }
     DEBUG_PRINT_GEN("Verifica ordinamento completata.");
 
-    // ----------------------------------------------------------------------
-    // Cleanup Risorse
-    // (Nessuna modifica necessaria)
-    // ----------------------------------------------------------------------
+    // --- Cleanup Risorse ---
     DEBUG_PRINT_GEN("Inizio cleanup risorse...");
     printf("Pulizia risorse...\n");
-    free(array);                // Libera memoria array principale
-    free(temp_array);           // Libera memoria array temporaneo
-    free(thread_args);          // Libera memoria argomenti thread
-    free(threads);              // Libera memoria ID thread
-    destroy_queue(&queue);      // Distrugge coda (libera nodi, mutex, cond var)
-    pthread_barrier_destroy(&barrier); // Distrugge la barriera
+    free(array);
+    free(temp_array);
+    free(thread_args);
+    free(threads);
+    destroy_queue(&queue);
+    pthread_barrier_destroy(&barrier);
+    pthread_mutex_destroy(&merge_temp_array_mutex); // Distrugge la mutex del merge
     DEBUG_PRINT_GEN("Cleanup completato.");
 
     printf("Esecuzione terminata con successo.\n");
-    return EXIT_SUCCESS; // Termina il programma indicando successo
+    return EXIT_SUCCESS;
 }
