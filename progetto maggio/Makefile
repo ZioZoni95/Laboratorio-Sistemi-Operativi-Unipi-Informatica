@@ -1,46 +1,40 @@
 CC = gcc
-CFLAGS = -g -Wall -Wextra -std=c99 -O2 -pthread -fsanitize=thread -Iinclude -D_POSIX_C_SOURCE=200809L
-LDFLAGS = -pthread -lm -fsanitize=thread
-TARGET = parallel_sort
+CFLAGS = -Wall -Wextra -pthread -Iinclude -g
+LDFLAGS = -pthread
+
 SRCDIR = src
-INCDIR = include
 OBJDIR = obj
-LOG_DIR = log
-SRCS = $(wildcard $(SRCDIR)/*.c)
-HDRS = $(wildcard $(INCDIR)/*.h)
-OBJS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
+INCDIR = include
 
-all: $(TARGET)
+SOURCES = $(wildcard $(SRCDIR)/*.c)
+OBJECTS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SOURCES))
 
-$(TARGET): $(OBJS)
-	@echo "Linking $(TARGET)..."
-	$(CC) $(LDFLAGS) -o $(TARGET) $(OBJS)
-	@echo "$(TARGET) creato con successo."
+EXECUTABLE = parallel_sort
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HDRS) | $(OBJDIR)
-	@echo "Compiling $<..."
-	$(CC) $(CFLAGS) -c $< -o $@
+all: $(EXECUTABLE)
 
-$(OBJDIR):
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+	@echo "Eseguibile $(EXECUTABLE) creato con successo."
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(wildcard $(INCDIR)/*.h) Makefile
 	@mkdir -p $(OBJDIR)
-
-test: $(TARGET)
-	@echo "Esecuzione dei test con test.sh..."
-	@chmod +x test.sh
-	@./test.sh
-	@echo "Test completati. Controllare l'output e i file in $(LOG_DIR)/"
+	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "Compilato $< -> $@"
 
 clean:
-	@echo "Cleaning build files and logs..."
-	@rm -rf $(OBJDIR) $(TARGET)
-	@rm -f $(LOG_DIR)/test_output_*.txt
-	@rmdir $(LOG_DIR) 2>/dev/null || true
-	@echo "Clean complete."
+	@echo "Pulizia dei file generati..."
+	rm -rf $(OBJDIR)
+	rm -f $(EXECUTABLE)
+	@echo "Pulizia completata."
 
-run: all
-	./$(TARGET) -n 10000 -w 4
+test: all
+	@echo "Esecuzione della batteria di test..."
+	@if [ -f ./test.sh ]; then \
+		bash ./test.sh; \
+	else \
+		echo "ERRORE: Script di test 'test.sh' non trovato nella directory corrente."; \
+		exit 1; \
+	fi
 
-run_custom: all
-	./$(TARGET) -n $(N) -w $(P)
-
-.PHONY: all clean test run run_custom
+.PHONY: all clean test

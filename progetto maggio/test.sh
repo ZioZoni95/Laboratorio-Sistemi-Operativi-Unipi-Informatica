@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================================
-#  Script di Test 
+#  Script di Test
 # ==========================================================
 PROGRAM="./parallel_sort"
 MAKEFILE="Makefile"
@@ -85,7 +85,7 @@ run_test "P4_N30" "$PROGRAM -n 30 -w 4"  "Correttezza: P=4, N=30 (N > P)"
 
 
 
-# === Test di "Stress" ===
+# === Test di "Stress" (opzionale, puoi commentarlo se troppo lento) ===
 run_test "Stress_P4_N5k" "time $PROGRAM -n 5000 -w 4" "Stress: P=4, N=5000"
 
 echo ">>> BATTERIA DI TEST COMPLETATA <<<"

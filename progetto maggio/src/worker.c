@@ -174,26 +174,22 @@ void *worker_thread(void *args) {
         DEBUG_PRINT(tid, "--- Inizio Passo Merge k=%d ---", k);
 
         // Calcola il numero di worker attivi in questo passo. Si dimezza ad ogni passo.
-        // Esempio: P=8. k=0 -> active=4. k=1 -> active=2. k=2 -> active=1.
+        
         int active_workers = P >> (k + 1);
-        // Determina se il worker corrente è attivo in questo passo (i primi 'active_workers' lo sono)
+        // Determina se il worker corrente è attivo in questo passo 
         int is_active = (tid < active_workers);
         long start_index_block1 = -1, end_index_block1 = -1; // Indici del primo blocco da unire
         long start_index_block2 = -1, end_index_block2 = -1; // Indici del secondo blocco da unire
         int merge_needed_for_this_worker = 0; // Flag: 1 se questo worker deve eseguire un merge, 0 altrimenti
 
-        // Solo i worker attivi e se N > 0 calcolano gli indici ed eseguono il merge
+        // Se N > 0 solo i worker attivi  calcolano gli indici ed eseguono il merge
         if (is_active && N > 0) {
             DEBUG_PRINT(tid, "[Step %d] ATTIVO (tid=%d < active_workers=%d). Calcolo indici per il merge...", k, tid, active_workers);
             
-            // Calcolo complesso degli indici per i due blocchi da unire.
-            // Si basa sulla dimensione originale delle partizioni e sul passo di merge corrente.
+           
+           
             long base_chunk_size_original = N / P; // Dimensione base delle partizioni iniziali
             long remainder_original = N % P;       // Resto delle partizioni iniziali
-            // Ampiezza, in termini di numero di partizioni originali, che ogni worker attivo gestisce
-            // per il merge in questo passo. Raddoppia ad ogni passo k.
-            // Esempio: P=8. k=0 (merge di coppie di partizioni originali) -> span = 2 (part_0+part_1, part_2+part_3 etc)
-            //             k=1 (merge di coppie di blocchi già uniti) -> span = 4 ( (p0-p1)+(p2-p3), (p4-p5)+(p6-p7) etc)
             long merge_block_span_of_original_partitions = 1L << (k + 1);
 
             // Calcola l'indice di inizio del primo blocco (start_index_block1)
@@ -205,7 +201,6 @@ void *worker_thread(void *args) {
             }
 
             // Calcola l'indice di fine del primo blocco (end_index_block1)
-            // Un blocco "1" è composto da 2^k partizioni originali.
             long partitions_in_one_sub_block = 1L << k;
             end_index_block1 = start_index_block1 - 1; // Inizia dal precedente dell'inizio
             for (int i = 0; i < partitions_in_one_sub_block; ++i) {
@@ -226,7 +221,6 @@ void *worker_thread(void *args) {
                         k, start_index_block1, end_index_block1, start_index_block2, N);
                 } else {
                     // Calcola l'indice di fine del secondo blocco (end_index_block2)
-                    // Simile al calcolo per end_index_block1, ma per il secondo "sotto-blocco".
                     end_index_block2 = start_index_block2 - 1;
                     for (int i = 0; i < partitions_in_one_sub_block; ++i) {
                         // Indice globale della partizione originale per il secondo blocco
@@ -280,7 +274,7 @@ void *worker_thread(void *args) {
                 DEBUG_PRINT(tid, "[Step %d] merge_mutex RILASCIATA.", k);
                 
                 // Memory barrier esplicita per assicurare che le scritture su temp_array siano visibili
-                // agli altri core/thread prima di procedere (importante su alcune architetture).
+                // agli altri core/thread prima di procedere
                 #if defined(__GNUC__) || defined(__clang__)
                     __sync_synchronize();
                     DEBUG_PRINT(tid, "[Step %d] __sync_synchronize() chiamata dopo merge_mutex unlock.", k);
@@ -307,7 +301,6 @@ void *worker_thread(void *args) {
 
         // --- Fase 3b: Copia del Risultato da temp_array ad array (Post-Barriera) ---
         // Solo i worker che hanno effettivamente eseguito un merge (merge_needed_for_this_worker == 1)
-        // copiano la loro porzione unita da temp_array kembali ke array.
         if (merge_needed_for_this_worker) {
              long copy_s = start_index_block1; // Inizio della regione da copiare
              long copy_e = end_index_block2;   // Fine della regione da copiare (corrisponde alla fine del blocco unito)
