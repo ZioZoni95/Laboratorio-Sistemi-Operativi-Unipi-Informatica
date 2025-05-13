@@ -12,7 +12,7 @@ CC = gcc
 # -pthread      : Abilita il supporto Pthreads (necessario per compilazione e linking)
 # -Iinclude     : Dice al compilatore dove cercare i file .h (nella cartella 'include')
 # -D_POSIX_C_SOURCE=200809L : Definisce la macro per abilitare le feature POSIX (come le barriere)
-CFLAGS = -Wall -Wextra -std=c11 -O2 -pthread -Iinclude -D_POSIX_C_SOURCE=200809L
+CFLAGS =  -g -Wall -Wextra -std=c11 -O2 -pthread -Iinclude -D_POSIX_C_SOURCE=200809L
 
 # Flags per il linker:
 # -pthread : Necessario anche al linker per collegare la libreria Pthreads
