@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "make_parallel_sort", // Etichetta per identificare questa task
+            "type": "shell",
+            "command": "make", // Assumendo che il tuo Makefile sia nella root del progetto
+            "args": [],        // Puoi aggiungere argomenti a 'make' qui se necessario,
+                               // es. se il tuo Makefile accetta opzioni come "DEBUG_LEVEL=1"
+                               // Potresti anche voler passare il flag -g qui se non è già nel Makefile:
+                               // "args": ["CFLAGS=-g"] o modificare direttamente il Makefile
+            "group": {
+                "kind": "build",
+                "isDefault": true // Rende questa la task di build predefinita (Ctrl+Shift+B)
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [
+                "$gcc" // Per interpretare gli errori e warning di GCC dall'output di make
+            ]
+        },
+        {
+            "label": "make_clean_parallel_sort",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "clean"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        }
+    ]
+}

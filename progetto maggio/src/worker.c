@@ -115,9 +115,12 @@ void *worker_thread(void *args) {
 
     // --- Fase 3: Merge Parallelo Sincronizzato ---
     int num_steps = 0;
-    if (P > 1) {
+    if (P >= 1) {
         int p_temp = P;
-        while (p_temp > 1) { p_temp >>= 1; num_steps++; } // Calcola log2(P)
+        while (p_temp >= 1) { 
+            p_temp >>= 1; /*shift a destra per dividere per 2*/ 
+            num_steps++;
+         } // Calcola log2(P)
     }
     DEBUG_PRINT(tid, "Numero di passi di merge necessari: %d (per P=%d)", num_steps, P);
 
