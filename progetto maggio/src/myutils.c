@@ -1,28 +1,17 @@
 /**
  * @file myutils.c
  * @brief Implementazione di funzioni di utilità per l'ordinamento parallelo.
- *
- * Include la funzione di confronto per qsort, la funzione di merge
- * e una funzione per stampare l'array (utile per il debug).
  */
 
 #include "myutils.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h> // Necessario per le asserzioni aggiunte per il debug
+#include <assert.h> // Necessario per le asserzioni
 
-// NOTA: Includiamo common.h qui se DEBUG_PRINT_GEN fosse usato,
-// ma per semplicità le stampe di debug dentro merge_sections usano printf.
-// Se si volesse usare DEBUG_PRINT_GEN, includere "common.h".
-// #include "common.h"
+// (common.h è già incluso tramite myutils.h)
 
 /**
  * @brief Funzione di confronto per qsort per ordinare interi.
- *
- * Confronta due interi puntati da a e b.
- * @param a Puntatore al primo intero.
- * @param b Puntatore al secondo intero.
- * @return <0 se *a < *b, 0 se *a == *b, >0 se *a > *b.
  */
 int qsort_compare(const void *a, const void *b) {
     int int_a = *((int *)a);
@@ -31,126 +20,147 @@ int qsort_compare(const void *a, const void *b) {
     if (int_a < int_b) return -1;
     if (int_a > int_b) return 1;
     return 0;
-    // Alternativa compatta: return (int_a > int_b) - (int_a < int_b);
 }
 
 /**
  * @brief Unisce due sezioni adiacenti e ordinate di un array sorgente in un array destinazione.
- *
- * Prende due sezioni ordinate [start1..end1] e [start2..end2] dall'array 'source'
- * e le unisce in modo ordinato nell'array 'dest', scrivendo nel range [start1..end2].
- * Si assume che end1 + 1 == start2 e che le sezioni sorgente siano già ordinate.
- * L'array 'dest' deve avere spazio sufficiente.
- *
- * @param source Array sorgente contenente le due sezioni ordinate.
- * @param dest Array destinazione dove scrivere il risultato unito.
- * @param start1 Indice iniziale della prima sezione in 'source'.
- * @param end1 Indice finale della prima sezione in 'source'.
- * @param start2 Indice iniziale della seconda sezione in 'source'.
- * @param end2 Indice finale della seconda sezione in 'source'.
  */
-void merge_sections(int *source, int *dest, int start1, int end1, int start2, int end2) {
+void merge_sections(int *source, int *dest,
+                    int start1, int end1,
+                    int start2, int end2,
+                    long N_total) { // !!! MODIFICA: Aggiunto N_total
+
+    // --- Asserzioni Iniziali Robuste ---
+    // Controlla che N_total sia positivo se gli intervalli hanno elementi.
+    // Se gli intervalli sono vuoti, N_total potrebbe essere 0 (array vuoto gestito).
+    if ( (end1 >= start1) || (end2 >= start2) ) { // Se c'è almeno un elemento da processare
+        assert(N_total > 0 && "N_total deve essere positivo se ci sono elementi da unire.");
+    }
+
+    // Controlli sul primo blocco (source[start1..end1])
+    // Se il blocco ha elementi, gli indici devono essere validi e ordinati.
+    if (end1 >= start1) { // Il blocco 1 ha elementi
+        assert(start1 >= 0 && "start1 deve essere >= 0.");
+        assert(end1 < N_total && "end1 deve essere < N_total.");
+        assert(start1 <= end1 && "start1 deve essere <= end1 per un blocco valido.");
+    }
+
+    // Controlli sul secondo blocco (source[start2..end2])
+    // Se il blocco ha elementi, gli indici devono essere validi e ordinati.
+    // E il secondo blocco deve iniziare dopo la fine del primo.
+    if (end2 >= start2) { // Il blocco 2 ha elementi
+        assert(start2 >= 0 && "start2 deve essere >= 0.");
+        assert(end2 < N_total && "end2 deve essere < N_total.");
+        assert(start2 <= end2 && "start2 deve essere <= end2 per un blocco valido.");
+        // Assicura che i blocchi siano adiacenti o che il secondo inizi dopo il primo.
+        // Se il primo blocco ha elementi, il secondo deve iniziare dopo.
+        if (end1 >= start1) {
+            assert(start2 == end1 + 1 && "I blocchi devono essere strettamente adiacenti se entrambi non vuoti.");
+        }
+    }
+
     int i = start1; // Indice per scorrere la prima sezione sorgente
     int j = start2; // Indice per scorrere la seconda sezione sorgente
     int k = start1; // Indice per scrivere nell'array di destinazione (inizia da start1)
 
     // Calcola l'indice finale atteso per la scrittura in dest.
-    // Questo serve per le asserzioni, per verificare che non scriviamo fuori dai limiti previsti.
-    // Nota: usiamo long per evitare potenziali overflow se gli intervalli fossero enormi,
-    // anche se qui gli indici sono int.
     long num_elements1 = (end1 >= start1) ? (long)end1 - start1 + 1 : 0;
     long num_elements2 = (end2 >= start2) ? (long)end2 - start2 + 1 : 0;
+
+    // Se non ci sono elementi in nessuno dei due blocchi, non c'è nulla da fare.
+    if (num_elements1 == 0 && num_elements2 == 0) {
+        return;
+    }
+
     long expected_end_k = start1 + num_elements1 + num_elements2 - 1;
+    // Verifica che l'intervallo di scrittura previsto per 'dest' sia valido.
+    assert(start1 >= 0 && "L'indice di inizio scrittura k (start1) deve essere >= 0.");
+    // Se ci sono elementi da scrivere, expected_end_k deve essere entro i limiti.
+    if (num_elements1 + num_elements2 > 0) {
+        assert(expected_end_k < N_total && "L'intervallo di scrittura in dest supera N_total.");
+    }
+
 
     // Stampa di debug opzionale per vedere gli input della funzione
-    // printf("[DEBUG merge_sections] Start: Source[%d-%d] + Source[%d-%d] -> Dest[%d...%ld]\n",
-    //        start1, end1, start2, end2, start1, expected_end_k);
+    // DEBUG_PRINT_GEN("[DEBUG merge_sections] Source[%d-%d](%ld el) + Source[%d-%d](%ld el) -> Dest[%d...%ld]",
+    //        start1, end1, num_elements1, start2, end2, num_elements2, start1, expected_end_k);
 
     // Ciclo principale: confronta elementi dalle due sezioni finché una non è esaurita
-    while (i <= end1 && j <= end2) {
-        // --- Asserzione di Debug ---
-        // Verifica che l'indice di scrittura 'k' sia all'interno del range atteso [start1 .. expected_end_k].
-        // Se questa asserzione fallisce, significa che stiamo scrivendo fuori dai limiti previsti in 'dest'.
-        assert(k >= start1 && k <= expected_end_k);
+    // o finché entrambi i blocchi hanno elementi validi da considerare.
+    while ( (num_elements1 > 0 && i <= end1) && (num_elements2 > 0 && j <= end2) ) {
+        assert(k >= start1 && k <= expected_end_k && "Indice k fuori range durante il merge principale.");
+        assert(i >= start1 && i <= end1); // Legge da Blocco1 valido
+        assert(j >= start2 && j <= end2); // Legge da Blocco2 valido
 
         if (source[i] <= source[j]) {
-            dest[k] = source[i];
-            // printf("  Merge write: dest[%d] = %d (from source[%d])\n", k, dest[k], i); // Debug scrittura
-            i++;
+            dest[k++] = source[i++];
         } else {
-            dest[k] = source[j];
-            // printf("  Merge write: dest[%d] = %d (from source[%d])\n", k, dest[k], j); // Debug scrittura
-            j++;
+            dest[k++] = source[j++];
         }
-        k++; // Incrementa l'indice di destinazione dopo la scrittura
     }
 
     // Copia eventuali elementi rimanenti dalla prima sezione
-    while (i <= end1) {
-        // --- Asserzione di Debug ---
-        assert(k >= start1 && k <= expected_end_k);
-        dest[k] = source[i];
-        // printf("  Merge write (rem i): dest[%d] = %d (from source[%d])\n", k, dest[k], i); // Debug scrittura
-        i++; k++;
+    while (num_elements1 > 0 && i <= end1) {
+        assert(k >= start1 && k <= expected_end_k && "Indice k fuori range copiando rimanenti da Blocco1.");
+        assert(i >= start1 && i <= end1); // Legge da Blocco1 valido
+        dest[k++] = source[i++];
     }
 
     // Copia eventuali elementi rimanenti dalla seconda sezione
-    while (j <= end2) {
-        // --- Asserzione di Debug ---
-        assert(k >= start1 && k <= expected_end_k);
-        dest[k] = source[j];
-        // printf("  Merge write (rem j): dest[%d] = %d (from source[%d])\n", k, dest[k], j); // Debug scrittura
-        j++; k++;
+    while (num_elements2 > 0 && j <= end2) {
+        assert(k >= start1 && k <= expected_end_k && "Indice k fuori range copiando rimanenti da Blocco2.");
+        assert(j >= start2 && j <= end2); // Legge da Blocco2 valido
+        dest[k++] = source[j++];
     }
 
-    // --- Asserzione Finale di Debug ---
-    // Alla fine, l'indice 'k' dovrebbe puntare esattamente alla posizione *successiva* all'ultimo elemento scritto.
-    // Quindi, k dovrebbe essere uguale a expected_end_k + 1.
-    assert(k == expected_end_k + 1);
-
-    // printf("[DEBUG merge_sections] End: Last write index k-1 = %d. Next index k = %d\n", k-1, k); // Debug opzionale
+    // Asserzione Finale: k dovrebbe puntare all'elemento successivo all'ultimo scritto.
+    // Cioè, k dovrebbe essere expected_end_k + 1.
+    // Questa asserzione è valida solo se c'era almeno un elemento da unire.
+    if (num_elements1 + num_elements2 > 0) {
+        assert(k == (expected_end_k + 1) && "k non è nella posizione finale attesa.");
+    } else { // Se non c'erano elementi, k non dovrebbe essersi mosso da start1.
+        assert(k == start1 && "k si è mosso ma non c'erano elementi da unire.");
+    }
 }
 
 
 /**
  * @brief Stampa il contenuto dell'array (o una sua parte) a schermo.
- *
- * Utile per il debugging. Limita la stampa per array molto grandi
- * mostrando solo gli elementi iniziali e finali.
- *
- * @param label Etichetta da stampare prima dell'array.
- * @param arr Puntatore all'array da stampare.
- * @param n Numero di elementi nell'array.
  */
 void print_array(const char *label, int *arr, long n) {
-    // Limiti per evitare stampe eccessive su console
-    const long MAX_PRINT_START = 15; // Max elementi da stampare all'inizio
-    const long MAX_PRINT_END = 15;   // Max elementi da stampare alla fine
-    const long TOTAL_MAX_PRINT = MAX_PRINT_START + MAX_PRINT_END + 1; // +1 per "..."
+    const long MAX_PRINT_START = 15;
+    const long MAX_PRINT_END = 15;
+    const long TOTAL_MAX_PRINT = MAX_PRINT_START + MAX_PRINT_END + 1;
 
     printf("--- %s (N=%ld) ---\n", label, n);
     if (n <= 0) {
-        printf("[]\n"); // Array vuoto
+        printf("[] (Array vuoto o N non positivo)\n");
         printf("-------------------------\n");
+        fflush(stdout); // Assicura che la stampa sia visibile
+        return;
+    }
+    if (arr == NULL && n > 0) {
+        printf("[Errore: Puntatore array NULL con N=%ld]\n", n);
+        printf("-------------------------\n");
+        fflush(stdout);
         return;
     }
 
+
     printf("[");
     if (n <= TOTAL_MAX_PRINT) {
-        // Stampa tutto l'array se è abbastanza piccolo
         for (long i = 0; i < n; ++i) {
             printf("%d%s", arr[i], (i < n - 1) ? ", " : "");
         }
     } else {
-        // Stampa l'inizio...
         for (long i = 0; i < MAX_PRINT_START; ++i) {
             printf("%d, ", arr[i]);
         }
-        printf("..."); // Separatore
-        // Stampa la fine...
+        printf("...");
         for (long i = n - MAX_PRINT_END; i < n; ++i) {
              printf(", %d", arr[i]);
         }
     }
     printf("]\n-------------------------\n");
+    fflush(stdout); // Assicura che la stampa sia visibile
 }
