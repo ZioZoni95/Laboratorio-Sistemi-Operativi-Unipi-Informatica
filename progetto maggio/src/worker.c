@@ -78,8 +78,8 @@ void *worker_thread(void *args) {
                 // Inserisce il task nella coda solo se la partizione è valida (start <= end)
                 if (task.start <= task.end) {
                     #if DEBUG == 0
-                    printf("[INDICI SORTING] Worker %d (Master): Creato Task per qsort: start=%d, end=%d (elementi: %ld)\n",
-                           tid, task.start, task.end, task.end - task.start + 1);
+                    printf("[INDICI SORTING] Worker %d (Master): Creato Task per qsort: start=%d, end=%d (elementi: %d)\n",
+                            tid, task.start, task.end, task.end - task.start + 1);
                     #endif
                     DEBUG_PRINT(tid, "[Setup Fase 1] Pushing Task: start=%d, end=%d (elementi: %ld)",
                                 task.start, task.end, task.end - task.start + 1);
@@ -108,8 +108,8 @@ void *worker_thread(void *args) {
         tasks_processed_by_this_thread++;
         #if DEBUG == 0
         if (current_task_qsort.start <= current_task_qsort.end) {
-            printf("[INDICI SORTING] Worker %d: Prelevato Task per qsort: start=%d, end=%d (elementi: %ld)\n",
-                   tid, current_task_qsort.start, current_task_qsort.end, current_task_qsort.end - current_task_qsort.start + 1);
+            printf("[INDICI SORTING] Worker %d: Prelevato Task per qsort: start=%d, end=%d (elementi: %d)\n",
+            tid, current_task_qsort.start, current_task_qsort.end, current_task_qsort.end - current_task_qsort.start + 1);
         }
         #endif
         DEBUG_PRINT(tid, "[Fase 2] Pop OK: Task(start=%d, end=%d). Eseguo qsort...",

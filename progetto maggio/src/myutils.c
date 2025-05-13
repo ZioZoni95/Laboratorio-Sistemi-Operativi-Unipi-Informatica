@@ -50,7 +50,7 @@ int qsort_compare(const void *a, const void *b) {
  * @note Le asserzioni sono usate per verificare la validità degli indici e delle condizioni
  * pre-esecuzione, specialmente se DEBUG è attivo.
  * @note Le stampe di DEBUG (attivate da #if DEBUG) sono molto dettagliate per tracciare
- * l'esecuzione del merge passo-passo.
+ * l'esecuzione del merge passo-passo per verifiche.
  */
 void merge_sections(int *source, int *dest,
                     int start1, int end1,

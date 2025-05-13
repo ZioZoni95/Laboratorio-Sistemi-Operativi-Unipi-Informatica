@@ -1,10 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-// Macro per definire lo standard POSIX e abilitare le barriere
-// Deve essere definita prima di includere qualsiasi header di sistema
-// #define _POSIX_C_SOURCE 200809L // Metodo alternativo, ma meglio usare -D nel Makefile
-
 // --- Macro per abilitare/disabilitare le stampe di Debug ---
 // Imposta a 1 per vedere stampe dettagliate (utile per debug)
 // Imposta a 0 per un output pulito 
@@ -48,7 +44,7 @@
 // --- Strutture Dati Comuni ---
 
 // Task: Rappresenta una partizione (intervallo di indici) da ordinare.
-// Corrisponde alla "coppia di indici (start,end)" menzionata nel testo d'esame.
+// Corrisponde alla "coppia di indici (start,end)
 typedef struct {
     int start; // Indice iniziale della partizione
     int end;   // Indice finale della partizione

@@ -5,15 +5,15 @@
 
 // Nodo della lista linkata usata per implementare la coda.
 typedef struct Node {
-    Partition_Index_Task task;          // Il task (start, end) contenuto nel nodo
+    Partition_Index_Task task;    // Il task (start, end) contenuto nel nodo
     struct Node *next;  // Puntatore al nodo successivo nella coda
 } Node;
 
 // Struttura Coda Concorrente (Q nel testo d'esame).
-// Offre operazioni push e pop thread-safe.
+// Le operazioni push e pop sono thread-safe.
 struct ConcurrentQueue {
-    Node *head;             // Puntatore al primo nodo della coda (da cui si fa pop)
-    Node *tail;             // Puntatore all'ultimo nodo della coda (dove si fa push)
+    Node *head;             
+    Node *tail;             
     pthread_mutex_t mutex;  // Mutex per garantire accesso esclusivo alla coda
     pthread_cond_t cond_non_empty; // Variabile di condizione per segnalare quando la coda non è vuota
     int closed;             // Flag: 1 se non verranno aggiunti più task iniziali, 0 altrimenti

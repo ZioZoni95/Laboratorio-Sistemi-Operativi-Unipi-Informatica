@@ -50,18 +50,22 @@ int main(int argc, char *argv[]) {
     // --- Controllo Validità Argomenti ---
     if (n <= 0 || p <= 0) {
         fprintf(stderr, "Errore: Specificare -n <num_elementi> (positivo) e -w <num_worker> (positivo).\n");
+        fflush(stderr);
         exit(EXIT_FAILURE);
     }
-    // Controlla se P è una potenza di 2. Se non lo è, stampa un avviso.
-    // La logica (p > 0) è ridondante dato il check precedente, ma non dannosa.
-    if ((p > 0) && (p != 1) && ((p & (p - 1)) != 0)) {
-        fprintf(stderr, "Avviso: Il numero di worker P=%d (da -w) non è una potenza di 2. La logica di merge potrebbe non funzionare come previsto per tutti i valori di P.\n", p);
+    // Controllo se P è una potenza di 2.
+    // p = 1 è una potenza di 2 (2^0), quindi è valido.
+    // Per p > 1, (p & (p - 1)) == 0 se p è una potenza di 2.
+    // Quindi, (p & (p - 1)) != 0 se p NON è una potenza di 2 (per p > 1).
+    if ((p != 1) && ((p & (p - 1)) != 0)) {
+        fprintf(stderr, "ERRORE: Il numero di worker P=%d (da opzione -w) non è una potenza di 2.\n", p);
+        fprintf(stderr, "         Per questo algoritmo, P deve essere una potenza di 2 (es. 1, 2, 4, 8, ...).\n");
+        exit(EXIT_FAILURE); // Interrompe l'esecuzione 
     }
 
     printf("Avvio parallel_sort con N=%ld elementi e P=%d worker (da -w).\n", n, p);
 
     // --- Allocazione Memoria ---
-    DEBUG_PRINT_GEN("Allocazione memoria per array principale e temporaneo...");
     // Alloca memoria per l'array principale che conterrà i dati da ordinare
     int *array = malloc(n * sizeof(int));
     CHECK_ERR(array == NULL, "Errore allocazione array principale"); // Controlla se malloc ha fallito
@@ -70,21 +74,13 @@ int main(int argc, char *argv[]) {
     int *temp_array = malloc(n * sizeof(int));
     CHECK_ERR(temp_array == NULL, "Errore allocazione array temporaneo");
 
-    DEBUG_PRINT_GEN("Inizializzazione temp_array a 0...");
-    // Inizializza l'array temporaneo a 0. Utile per debug o per stati iniziali definiti.
-    for (long i = 0; i < n; ++i) {
-        temp_array[i] = 0;
-    }
-    DEBUG_PRINT_GEN("Allocazione e inizializzazione temp_array completata.");
-
-
+   
     // --- Inizializzazione Array Casuale ---
     srand(time(NULL)); // Inizializza il generatore di numeri casuali
     printf("Inizializzazione array con valori casuali...\n");
     for (long i = 0; i < n; ++i) {
         array[i] = rand() % (n * 10); // Riempie l'array con valori casuali
     }
-    DEBUG_PRINT_GEN("Inizializzazione array con valori casuali completata.");
 
     // Stampa l'array iniziale se DEBUG è 0 (richiesta specifica)
     // o se DEBUG è diverso da 0 (comportamento standard della macro DEBUG_PRINT)
@@ -96,38 +92,31 @@ int main(int argc, char *argv[]) {
 
 
     // --- Inizializzazione Strutture di Sincronizzazione ---
-    DEBUG_PRINT_GEN("Inizializzazione Coda Concorrente...");
     ConcurrentQueue queue; // Istanza della coda concorrente
     CHECK_ERR(init_queue(&queue) != 0, "Errore inizializzazione coda"); // Inizializza la coda
 
-    DEBUG_PRINT_GEN("Inizializzazione Barriera (per %d worker)...", p);
     pthread_barrier_t barrier; // Istanza della barriera
     // Inizializza la barriera per 'p' thread worker
     err = pthread_barrier_init(&barrier, NULL, p);
     CHECK_PTHREAD_ERR(err, "Errore pthread_barrier_init");
 
-    DEBUG_PRINT_GEN("Inizializzazione Mutex per Merge (merge_temp_array_mutex)...");
     // Inizializza il mutex usato per proteggere l'accesso a temp_array durante il merge
     err = pthread_mutex_init(&merge_temp_array_mutex, NULL);
     CHECK_PTHREAD_ERR(err, "Errore pthread_mutex_init for merge_temp_array_mutex");
 
-    DEBUG_PRINT_GEN("Inizializzazione Mutex per Fase di Copia (copy_phase_mutex)...");
     // Inizializza il mutex usato per proteggere la copia da temp_array ad array
     err = pthread_mutex_init(&copy_phase_mutex, NULL);
     CHECK_PTHREAD_ERR(err, "Errore pthread_mutex_init for copy_phase_mutex");
 
-    DEBUG_PRINT_GEN("Coda, Barriera e Mutex inizializzate.");
 
 
     // --- Preparazione Argomenti Thread ---
-    DEBUG_PRINT_GEN("Allocazione memoria per argomenti e ID thread...");
     // Alloca memoria per un array di strutture ThreadArgs, una per ogni worker
     ThreadArgs *thread_args = malloc(p * sizeof(ThreadArgs));
     CHECK_ERR(thread_args == NULL, "Errore allocazione ThreadArgs");
     // Alloca memoria per un array di identificatori di thread (pthread_t)
     pthread_t *threads = malloc(p * sizeof(pthread_t));
     CHECK_ERR(threads == NULL, "Errore allocazione pthread_t");
-    DEBUG_PRINT_GEN("Allocazione completata.");
 
     // --- Creazione Thread Worker ---
     printf("Creazione di %d thread worker (da -w)...\n", p);
@@ -143,7 +132,6 @@ int main(int argc, char *argv[]) {
         thread_args[i].merge_mutex_ptr = &merge_temp_array_mutex;
         thread_args[i].copy_phase_mutex_ptr = &copy_phase_mutex;
         
-        DEBUG_PRINT_GEN("Creazione thread %d...", i);
         // Crea il thread worker, passando la funzione worker_thread e gli argomenti specifici
         err = pthread_create(&threads[i], NULL, worker_thread, &thread_args[i]);
         CHECK_PTHREAD_ERR(err, "Errore creazione thread");
@@ -153,9 +141,7 @@ int main(int argc, char *argv[]) {
     // Il thread principale attende che tutti i thread worker terminino la loro esecuzione.
     printf("Attesa terminazione thread (join)...\n");
     for (int i = 0; i < p; ++i) {
-        DEBUG_PRINT_GEN("Join sul thread %d...", i);
         pthread_join(threads[i], NULL); // Attende la terminazione del thread i-esimo
-        DEBUG_PRINT_GEN("Join completato per thread %d.", i);
     }
     printf("Tutti i thread hanno terminato.\n");
 
