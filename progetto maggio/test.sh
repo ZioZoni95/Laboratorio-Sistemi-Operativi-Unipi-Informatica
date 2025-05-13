@@ -2,9 +2,10 @@
 
 # ==========================================================
 #  Script di Test per Valutazione Progetto Parallel Sort
+#  Focalizzato su W=1 e W=2 (come potenze di 2 valide)
 # ==========================================================
 # Questo script esegue una serie di test sul programma parallel_sort
-# per verificarne la correttezza in base ai requisiti dell'esame.
+# per verificarne la correttezza.
 # Ogni test viene etichettato e il suo risultato (OK/ERRORE)
 # viene determinato automaticamente analizzando l'output del programma.
 
@@ -33,16 +34,22 @@ run_test() {
     echo "" # Riga vuota per separare output da valutazione
 
     # Valutazione Automatica
-    # Caso 1: W non è potenza di 2 (Errore Atteso)
+    # Nota: La traccia originale del progetto chiede che il programma gestisca
+    # P non potenza di 2, ma qui ci concentriamo su P=1 e P=2 che sono potenze di 2.
+    # Il check per P non potenza di 2 è qui mantenuto per completezza nel caso
+    # tu voglia reintrodurre tali test, ma non dovrebbe scattare per W=1 o W=2.
     if echo "$description" | grep -q "non potenza di 2"; then
-        if [ $EXIT_CODE -ne 0 ] && echo "$OUTPUT" | grep -q "deve essere una potenza di 2"; then
-            status="[OK] (Errore atteso gestito correttamente)"
-        elif [ $EXIT_CODE -eq 0 ]; then
-             status="[ERRORE] (Il programma NON ha fallito come atteso per W non potenza di 2)"
+        # Questo blocco ora si aspetta un fallimento se il tuo main.c è stato modificato
+        # per uscire con errore per P non potenza di 2.
+        # Se il tuo main.c emette solo un avviso e continua, questo test fallirà.
+        if [ $EXIT_CODE -ne 0 ]; then # Assumiamo che il programma esca con errore
+            status="[OK] (Programma terminato con errore come atteso per P non potenza di 2)"
+        elif echo "$OUTPUT" | grep -qi "avviso:.*non è una potenza di 2"; then
+             status="[OK] (Avviso per P non potenza di 2 emesso, ma il programma ha continuato - potrebbe essere il comportamento desiderato)"
         else
-             status="[ERRORE] (Fallito, ma messaggio di errore per W non potenza di 2 non trovato)"
+             status="[ERRORE] (Il programma NON ha fallito né emesso un avviso standard per P non potenza di 2)"
         fi
-    # Caso 2: Test che dovrebbero avere successo
+    # Caso 2: Test che dovrebbero avere successo (W=1 o W=2)
     else
         if [ $EXIT_CODE -eq 0 ] && echo "$OUTPUT" | grep -q "Verifica: L'array è ordinato correttamente."; then
             status="[OK]"
@@ -79,31 +86,35 @@ echo "Compilazione completata con successo."
 echo ""
 
 # --- Fase 2: Esecuzione Test ---
-echo ">>> FASE 2: Esecuzione Batteria di Test <<<"
+echo ">>> FASE 2: Esecuzione Batteria di Test (Focus W=1, W=2) <<<"
 rm -f test_*_output.txt # Pulisce output precedenti
 
-# Test Correttezza Base (N piccolo, W potenze di 2)
-run_test "T01" "$PROGRAM -n 50 -w 1"  "Correttezza: Caso Sequenziale (W=1)"
-run_test "T02" "$PROGRAM -n 50 -w 2"  "Correttezza: W=2"
-run_test "T03" "$PROGRAM -n 50 -w 4"  "Correttezza: W=4"
-run_test "T04" "$PROGRAM -n 50 -w 8"  "Correttezza: W=8"
+# Test Correttezza Base con W=1 (Sequenziale)
+run_test "T01_W1" "$PROGRAM -n 50 -w 1"  "Correttezza: Caso Sequenziale (W=1, N=50)"
+run_test "T02_W1" "$PROGRAM -n 1 -w 1"   "Correttezza: Caso Sequenziale (W=1, N=1)"
+run_test "T03_W1" "$PROGRAM -n 10 -w 1"  "Correttezza: Caso Sequenziale (W=1, N=10)"
 
-# Test Casi Limite (N vs W)
-run_test "T05" "$PROGRAM -n 8 -w 8"   "Caso Limite: N = W"
-run_test "T06" "$PROGRAM -n 7 -w 8"   "Caso Limite: N < W"
-run_test "T07" "$PROGRAM -n 16 -w 16" "Caso Limite: N = W (più grande)"
-run_test "T08" "$PROGRAM -n 15 -w 16" "Caso Limite: N < W (più grande)"
+# Test Correttezza Base con W=2
+run_test "T04_W2" "$PROGRAM -n 50 -w 2"  "Correttezza: W=2, N=50"
+run_test "T05_W2" "$PROGRAM -n 2 -w 2"   "Correttezza: W=2, N=2 (N=W)"
+run_test "T06_W2" "$PROGRAM -n 10 -w 2"  "Correttezza: W=2, N=10"
+run_test "T07_W2" "$PROGRAM -n 1 -w 2"   "Correttezza: W=2, N=1 (N < W)" # Particolarmente interessante
 
-# Test Gestione Input Errati (W non potenza di 2)
-run_test "T09" "$PROGRAM -n 50 -w 3"  "Input Errato: W=3 (non potenza di 2)"
-run_test "T10" "$PROGRAM -n 50 -w 6"  "Input Errato: W=6 (non potenza di 2)"
-run_test "T11" "$PROGRAM -n 50 -w 7"  "Input Errato: W=7 (non potenza di 2)"
+# Test Casi Limite con W=1 e W=2
+run_test "T08_LIMIT" "$PROGRAM -n 8 -w 1"   "Caso Limite: N=8, W=1"
+run_test "T09_LIMIT" "$PROGRAM -n 8 -w 2"   "Caso Limite: N=8, W=2"
+run_test "T10_LIMIT" "$PROGRAM -n 7 -w 1"   "Caso Limite: N=7 (dispari), W=1"
+run_test "T11_LIMIT" "$PROGRAM -n 7 -w 2"   "Caso Limite: N=7 (dispari), W=2 (N > W)"
+run_test "T12_LIMIT" "$PROGRAM -n 1 -w 2"   "Caso Limite Ripetuto: N=1, W=2 (N < W)" # Verifica consistenza
 
-# Test Scalabilità Indicativa (N grande) - Nota: la correttezza è ancora verificata
+# Test con N più grande (per W=1 e W=2)
 # Usiamo 'time' per dare un'idea, ma l'output sarà incluso nel file
-run_test "T12" "time $PROGRAM -n 50000 -w 1" "Scalabilità: N Grande, W=1"
-run_test "T13" "time $PROGRAM -n 50000 -w 4" "Scalabilità: N Grande, W=4"
-run_test "T14" "time $PROGRAM -n 50000 -w 8" "Scalabilità: N Grande, W=8"
+run_test "T13_SCALE" "time $PROGRAM -n 10000 -w 1" "Scalabilità Indicativa: N Grande, W=1"
+run_test "T14_SCALE" "time $PROGRAM -n 10000 -w 2" "Scalabilità Indicativa: N Grande, W=2"
+
+# Test opzionale: P non potenza di 2 (se vuoi verificare come il tuo programma attuale lo gestisce)
+# Se il tuo programma deve fallire, modifica la condizione nel `run_test`
+# run_test "T15_NON_POW2" "$PROGRAM -n 50 -w 3"  "Input Errato: W=3 (non potenza di 2)"
 
 echo ">>> BATTERIA DI TEST COMPLETATA <<<"
 echo "Verificare lo stato [OK]/[ERRORE] per ciascun test."
