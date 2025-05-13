@@ -8,7 +8,7 @@
 // --- Macro per abilitare/disabilitare le stampe di Debug ---
 // Imposta a 1 per vedere stampe dettagliate (utile per debug)
 // Imposta a 0 per un output pulito 
-#define DEBUG 1
+#define DEBUG 0
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -8,11 +8,10 @@
  * di merge su temp_array e una nuova mutex per la fase di copia.
  */
 
-#include <unistd.h> // Per getopt()
-#include <time.h>   // Per srand(), time()
-#include <pthread.h> // Per pthread_mutex_t
+#include <unistd.h>  
+#include <time.h>    
+#include <pthread.h>
 
-// Include i nostri header locali
 #include "common.h"
 #include "queue.h"
 #include "worker.h"
@@ -21,43 +20,41 @@
 // Dichiarazione della mutex globale per la fase di merge su temp_array
 pthread_mutex_t merge_temp_array_mutex;
 
-// *** NUOVA MODIFICA INIZIO ***
 // Dichiarazione della mutex globale per la fase di copia da temp_array ad array
 pthread_mutex_t copy_phase_mutex;
-// *** NUOVA MODIFICA FINE ***
 
 
-// Funzione principale del programma
 int main(int argc, char *argv[]) {
     long n = 0; // Numero elementi array (N) - Da opzione -n
-    int p = 0; // Numero thread worker (P) - Da opzione -w
-    int opt; // Variabile per getopt
-    int err; // Variabile per controllo errori pthread
-
-    DEBUG_PRINT_GEN("Programma avviato.");
+    int p = 0;  // Numero thread worker (P) - Da opzione -w
+    int opt;    // Variabile per getopt
+    int err;    // Variabile per controllo errori pthread
 
     // --- Parsing Argomenti Riga di Comando ---
+    // Utilizza getopt per leggere le opzioni -n (numero elementi) e -w (numero worker)
     while ((opt = getopt(argc, argv, "n:w:")) != -1) {
         switch (opt) {
             case 'n':
-                n = atol(optarg);
+                n = atol(optarg); // Converte l'argomento di -n a long
                 break;
             case 'w':
-                p = atoi(optarg);
+                p = atoi(optarg); // Converte l'argomento di -w a int
                 break;
             default:
+                // Se viene usata un'opzione non valida, stampa un messaggio di errore ed esce
                 fprintf(stderr, "Uso: %s -n <num_elementi> -w <num_worker>\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
-    DEBUG_PRINT_GEN("Argomenti parsati: N=%ld, P=%d (da -w)", n, p);
 
     // --- Controllo Validità Argomenti ---
     if (n <= 0 || p <= 0) {
         fprintf(stderr, "Errore: Specificare -n <num_elementi> (positivo) e -w <num_worker> (positivo).\n");
         exit(EXIT_FAILURE);
     }
-    if ((p > 0) && (p != 1) && ((p & (p - 1)) != 0)) { 
+    // Controlla se P è una potenza di 2. Se non lo è, stampa un avviso.
+    // La logica (p > 0) è ridondante dato il check precedente, ma non dannosa.
+    if ((p > 0) && (p != 1) && ((p & (p - 1)) != 0)) {
         fprintf(stderr, "Avviso: Il numero di worker P=%d (da -w) non è una potenza di 2. La logica di merge potrebbe non funzionare come previsto per tutti i valori di P.\n", p);
     }
 
@@ -65,57 +62,69 @@ int main(int argc, char *argv[]) {
 
     // --- Allocazione Memoria ---
     DEBUG_PRINT_GEN("Allocazione memoria per array principale e temporaneo...");
+    // Alloca memoria per l'array principale che conterrà i dati da ordinare
     int *array = malloc(n * sizeof(int));
-    CHECK_ERR(array == NULL, "Errore allocazione array principale");
+    CHECK_ERR(array == NULL, "Errore allocazione array principale"); // Controlla se malloc ha fallito
 
+    // Alloca memoria per l'array temporaneo usato durante la fase di merge
     int *temp_array = malloc(n * sizeof(int));
     CHECK_ERR(temp_array == NULL, "Errore allocazione array temporaneo");
 
     DEBUG_PRINT_GEN("Inizializzazione temp_array a 0...");
+    // Inizializza l'array temporaneo a 0. Utile per debug o per stati iniziali definiti.
     for (long i = 0; i < n; ++i) {
-        temp_array[i] = 0; 
+        temp_array[i] = 0;
     }
     DEBUG_PRINT_GEN("Allocazione e inizializzazione temp_array completata.");
 
 
     // --- Inizializzazione Array Casuale ---
-    srand(time(NULL)); 
+    srand(time(NULL)); // Inizializza il generatore di numeri casuali
     printf("Inizializzazione array con valori casuali...\n");
     for (long i = 0; i < n; ++i) {
-        array[i] = rand() % (n * 10); 
+        array[i] = rand() % (n * 10); // Riempie l'array con valori casuali
     }
     DEBUG_PRINT_GEN("Inizializzazione array con valori casuali completata.");
-    #if DEBUG
-    print_array("Array Iniziale", array, n);
+
+    // Stampa l'array iniziale se DEBUG è 0 (richiesta specifica)
+    // o se DEBUG è diverso da 0 (comportamento standard della macro DEBUG_PRINT)
+    #if DEBUG == 0
+    if (n > 0) print_array("Array Iniziale", array, n);
+    #else
+    print_array("Array Iniziale (DEBUG ATTIVO)", array, n); // Questa è la stampa originale sotto #if DEBUG
     #endif
+
 
     // --- Inizializzazione Strutture di Sincronizzazione ---
     DEBUG_PRINT_GEN("Inizializzazione Coda Concorrente...");
-    ConcurrentQueue queue;
-    CHECK_ERR(init_queue(&queue) != 0, "Errore inizializzazione coda");
+    ConcurrentQueue queue; // Istanza della coda concorrente
+    CHECK_ERR(init_queue(&queue) != 0, "Errore inizializzazione coda"); // Inizializza la coda
 
     DEBUG_PRINT_GEN("Inizializzazione Barriera (per %d worker)...", p);
-    pthread_barrier_t barrier;
+    pthread_barrier_t barrier; // Istanza della barriera
+    // Inizializza la barriera per 'p' thread worker
     err = pthread_barrier_init(&barrier, NULL, p);
     CHECK_PTHREAD_ERR(err, "Errore pthread_barrier_init");
 
     DEBUG_PRINT_GEN("Inizializzazione Mutex per Merge (merge_temp_array_mutex)...");
+    // Inizializza il mutex usato per proteggere l'accesso a temp_array durante il merge
     err = pthread_mutex_init(&merge_temp_array_mutex, NULL);
     CHECK_PTHREAD_ERR(err, "Errore pthread_mutex_init for merge_temp_array_mutex");
 
-    // *** NUOVA MODIFICA INIZIO ***
     DEBUG_PRINT_GEN("Inizializzazione Mutex per Fase di Copia (copy_phase_mutex)...");
+    // Inizializza il mutex usato per proteggere la copia da temp_array ad array
     err = pthread_mutex_init(&copy_phase_mutex, NULL);
     CHECK_PTHREAD_ERR(err, "Errore pthread_mutex_init for copy_phase_mutex");
-    // *** NUOVA MODIFICA FINE ***
 
     DEBUG_PRINT_GEN("Coda, Barriera e Mutex inizializzate.");
 
 
     // --- Preparazione Argomenti Thread ---
     DEBUG_PRINT_GEN("Allocazione memoria per argomenti e ID thread...");
+    // Alloca memoria per un array di strutture ThreadArgs, una per ogni worker
     ThreadArgs *thread_args = malloc(p * sizeof(ThreadArgs));
     CHECK_ERR(thread_args == NULL, "Errore allocazione ThreadArgs");
+    // Alloca memoria per un array di identificatori di thread (pthread_t)
     pthread_t *threads = malloc(p * sizeof(pthread_t));
     CHECK_ERR(threads == NULL, "Errore allocazione pthread_t");
     DEBUG_PRINT_GEN("Allocazione completata.");
@@ -123,56 +132,63 @@ int main(int argc, char *argv[]) {
     // --- Creazione Thread Worker ---
     printf("Creazione di %d thread worker (da -w)...\n", p);
     for (int i = 0; i < p; ++i) {
+        // Popola la struttura ThreadArgs per il worker corrente
         thread_args[i].thread_id = i;
         thread_args[i].array = array;
-        thread_args[i].temp_array = temp_array; 
+        thread_args[i].temp_array = temp_array;
         thread_args[i].n_elements = n;
         thread_args[i].n_threads = p;
         thread_args[i].queue = &queue;
         thread_args[i].barrier = &barrier;
         thread_args[i].merge_mutex_ptr = &merge_temp_array_mutex;
-        
-        // *** NUOVA MODIFICA INIZIO ***
-        thread_args[i].copy_phase_mutex_ptr = &copy_phase_mutex; 
-        // *** NUOVA MODIFICA FINE ***
+        thread_args[i].copy_phase_mutex_ptr = &copy_phase_mutex;
         
         DEBUG_PRINT_GEN("Creazione thread %d...", i);
+        // Crea il thread worker, passando la funzione worker_thread e gli argomenti specifici
         err = pthread_create(&threads[i], NULL, worker_thread, &thread_args[i]);
         CHECK_PTHREAD_ERR(err, "Errore creazione thread");
     }
 
     // --- Attesa Terminazione Thread (Join) ---
+    // Il thread principale attende che tutti i thread worker terminino la loro esecuzione.
     printf("Attesa terminazione thread (join)...\n");
     for (int i = 0; i < p; ++i) {
         DEBUG_PRINT_GEN("Join sul thread %d...", i);
-        pthread_join(threads[i], NULL);
+        pthread_join(threads[i], NULL); // Attende la terminazione del thread i-esimo
         DEBUG_PRINT_GEN("Join completato per thread %d.", i);
     }
     printf("Tutti i thread hanno terminato.\n");
 
-    #if DEBUG
-    print_array("Array Finale", array, n);
+    // Stampa l'array finale se DEBUG è 0 
+    // o se DEBUG è diverso da 0 (comportamento standard della macro DEBUG_PRINT)
+    #if DEBUG == 0
+    if (n > 0) print_array("Array Finale", array, n);
+    #else
+    print_array("Array Finale (DEBUG ATTIVO)", array, n); // Questa è la stampa originale sotto #if DEBUG
     #endif
+
 
     // --- Verifica Correttezza Ordinamento ---
     DEBUG_PRINT_GEN("Inizio verifica ordinamento array...");
-    int sorted = 1;
+    int sorted = 1; // Flag per indicare se l'array è ordinato
+    // Scorre l'array per verificare se è ordinato confrontando elementi adiacenti
     for (long i = 0; i < n - 1; ++i) {
         if (array[i] > array[i + 1]) {
             fprintf(stderr, "ERRORE: l'array NON è ordinato! array[%ld]=%d > array[%ld]=%d\n",
                     i, array[i], i + 1, array[i + 1]);
-            #if DEBUG 
+            // Se DEBUG è attivo e si trova un errore, stampa una porzione dell'array attorno all'errore
+            #if DEBUG
             long start_print = (i > 10) ? i - 10 : 0;
-            long end_print = (i + 10 < n) ? i + 10 : n -1; 
-            if (n > 0) { 
+            long end_print = (i + 10 < n) ? i + 10 : n -1;
+            if (n > 0) {
                 fprintf(stderr, "[DEBUG] Elementi intorno all'errore (indici %ld-%ld):\n", start_print, end_print);
                 for(long j = start_print; j <= end_print; ++j) {
                     fprintf(stderr, "[DEBUG] array[%ld] = %d%s\n", j, array[j], (j==i || j==i+1) ? " <<< ERRORE QUI" : "");
                 }
             }
             #endif
-            sorted = 0;
-            break;
+            sorted = 0; // Imposta il flag a 0 (non ordinato)
+            break;      // Interrompe il ciclo, non è necessario continuare
         }
     }
     if (sorted) {
@@ -183,23 +199,20 @@ int main(int argc, char *argv[]) {
     DEBUG_PRINT_GEN("Verifica ordinamento completata.");
 
     // --- Cleanup Risorse ---
+    // Libera tutta la memoria allocata dinamicamente e distrugge le primitive di sincronizzazione.
     DEBUG_PRINT_GEN("Inizio cleanup risorse...");
     printf("Pulizia risorse...\n");
-    free(array);
-    free(temp_array);
-    free(thread_args);
-    free(threads);
-    destroy_queue(&queue);
-    pthread_barrier_destroy(&barrier);
-    pthread_mutex_destroy(&merge_temp_array_mutex);
-
-    // *** NUOVA MODIFICA INIZIO ***
-    pthread_mutex_destroy(&copy_phase_mutex);
+    free(array);                      // Libera l'array principale
+    free(temp_array);                 // Libera l'array temporaneo
+    free(thread_args);                // Libera l'array degli argomenti dei thread
+    free(threads);                    // Libera l'array degli ID dei thread
+    destroy_queue(&queue);            // Distrugge la coda concorrente
+    pthread_barrier_destroy(&barrier); // Distrugge la barriera
+    pthread_mutex_destroy(&merge_temp_array_mutex); // Distrugge il mutex di merge
+    pthread_mutex_destroy(&copy_phase_mutex);       // Distrugge il mutex di copia
     DEBUG_PRINT_GEN("Mutex per fase di copia distrutto.");
-    // *** NUOVA MODIFICA FINE ***
-
     DEBUG_PRINT_GEN("Cleanup completato.");
 
     printf("Esecuzione terminata con successo.\n");
-    return EXIT_SUCCESS;
+    return EXIT_SUCCESS; // Termina il programma con successo
 }
