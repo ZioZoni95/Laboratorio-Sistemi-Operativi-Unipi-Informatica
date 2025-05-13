@@ -220,7 +220,7 @@ void *worker_thread(void *args) {
                 pthread_mutex_unlock(merge_mutex);
                 DEBUG_PRINT(tid, "[Step %d] merge_mutex RILASCIATA.",k);
 
-                 // *** INIZIO NUOVA MODIFICA: MEMORY FENCE ESPLICITA ***
+                 // ***MEMORY FENCE ESPLICITA ***
                 #if defined(__GNUC__) || defined(__clang__)
                 __sync_synchronize(); // Full memory barrier per GCC/Clang
                 DEBUG_PRINT(tid, "[Step %d] __sync_synchronize() chiamata dopo merge_mutex unlock.", k);

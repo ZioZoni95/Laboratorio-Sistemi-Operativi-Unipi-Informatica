@@ -7,7 +7,7 @@
 
 // --- Macro per abilitare/disabilitare le stampe di Debug ---
 // Imposta a 1 per vedere stampe dettagliate (utile per debug)
-// Imposta a 0 per un output pulito (per la consegna o test di performance)
+// Imposta a 0 per un output pulito 
 #define DEBUG 1
 
 #include <stdio.h>
@@ -67,11 +67,7 @@ typedef struct {
     ConcurrentQueue *queue; // Puntatore alla coda concorrente condivisa (Q)
     pthread_barrier_t *barrier; // Puntatore alla barriera di sincronizzazione condivisa
     pthread_mutex_t *merge_mutex_ptr; // Mutex per serializzare merge_sections su temp_array
-
-    // *** NUOVA MODIFICA INIZIO ***
     pthread_mutex_t *copy_phase_mutex_ptr; // Mutex per serializzare la fase di copia da temp_array ad array
-    // *** NUOVA MODIFICA FINE ***
-
 } ThreadArgs;
 
 #endif // COMMON_H
