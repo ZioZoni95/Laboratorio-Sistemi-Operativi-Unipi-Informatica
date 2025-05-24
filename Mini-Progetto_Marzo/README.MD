@@ -1,0 +1,1 @@
+Le varie cartelle includono differenti implementazioni, il progetto non è stato consegnato per tempo ma completato e funzionale
