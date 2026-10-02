@@ -1,0 +1,51 @@
+# --- Artefatti di compilazione ---
+*.o
+*.a
+*.so
+*.out
+*.d
+obj/
+build/
+
+# --- Eseguibili prodotti dai Makefile / dalle compilazioni a mano ---
+esami/2025-05-maggio/parallel_sort
+esami/2024-09-settembre/versione-2/prod_bici
+esami/2023-07-luglio/main
+esami/2025-03-marzo/new_ProgettoMarzo25/esame_MasterWorker
+esami/2025-03-marzo/progetto_marzo_gem/sum_calculator
+esami/2025-03-marzo/progetto_marzo_gem/new_sumCalculator
+esami/2025-03-marzo/Progetto_marzo/esameMarzo
+esami/2025-03-marzo/Progetto_marzo/deabug_esame
+esercitazioni/esercitazione-01/strtoupper
+esercitazioni/esercitazione-01/cmdlineparser
+esercitazioni/esercitazione-01/mystrcat
+esercitazioni/esercitazione-02/testOPT
+esercitazioni/esercitazione-02/c_occorrenze
+esercitazioni/esercitazione-02/strtok_r
+esercitazioni/esercitazione-02/new_getopt
+esercitazioni/esercitazione-03/main/tokenizer_test
+esercitazioni/esercitazione-05/es2/myfind
+esercitazioni/esercitazione-06/es1/dummyshell
+esercitazioni/esercitazione-06/es1/dummyshell_optimized
+esercitazioni/esercitazione-06/es2/background_exec
+esercitazioni/esercitazione-06/es3/zombie
+esercitazioni/esercitazione-06/es4/family
+esercitazioni/esercitazione-06/es5/fibo
+esercitazioni/esercitazione-08/es2/calc_sc
+esempi-lezione/exectest
+esempi-lezione/testfork
+esempi-lezione/thTest
+
+# --- Output di test e log ---
+log/
+output/
+*.log
+
+# --- Configurazioni IDE / editor (contengono path personali) ---
+.idea/
+.vscode/
+*.iml
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
