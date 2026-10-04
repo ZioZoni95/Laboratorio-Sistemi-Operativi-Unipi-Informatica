@@ -9,6 +9,8 @@ build/
 
 # --- Eseguibili prodotti dai Makefile / dalle compilazioni a mano ---
 esami/2025-05-maggio/parallel_sort
+esami/2025-05-maggio/parallel_sort_tsan
+esami/2025-05-maggio/parallel_sort_asan
 esami/2024-09-settembre/versione-2/prod_bici
 esami/2023-07-luglio/main
 esami/2025-03-marzo/new_ProgettoMarzo25/esame_MasterWorker

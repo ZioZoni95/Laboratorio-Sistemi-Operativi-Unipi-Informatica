@@ -1,51 +1,40 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
-#include "common.h" // Include Task, ThreadArgs, etc.
+#include "common.h"
 
-// Nodo della lista linkata usata per implementare la coda.
+// Nodo della lista singolarmente concatenata che implementa la coda.
 typedef struct Node {
-    Partition_Index_Task task;    // Il task (start, end) contenuto nel nodo
-    struct Node *next;  // Puntatore al nodo successivo nella coda
+    Partition_Index_Task task;
+    struct Node *next;
 } Node;
 
-// Struttura Coda Concorrente (Q nel testo d'esame).
-// Le operazioni push e pop sono thread-safe.
+// Coda concorrente Q della traccia (FIFO illimitata).
+// push e pop sono thread-safe: un mutex protegge la lista e una variabile di
+// condizione fa attendere i consumatori quando la coda è vuota.
 struct ConcurrentQueue {
-    Node *head;             
-    Node *tail;             
-    pthread_mutex_t mutex;  // Mutex per garantire accesso esclusivo alla coda
-    pthread_cond_t cond_non_empty; // Variabile di condizione per segnalare quando la coda non è vuota
-    int closed;             // Flag: 1 se non verranno aggiunti più task iniziali, 0 altrimenti
-    long task_count;        // Numero di task attualmente nella coda (per debug/info)
+    Node *head;
+    Node *tail;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond_non_empty;
+    int closed;                    // 1 quando non verranno più inseriti task
 };
 
-// --- Dichiarazioni Funzioni Coda ---
-
-// Inizializza la coda concorrente.
-// Deve essere chiamata prima di usare la coda.
-// Restituisce 0 in caso di successo, -1 in caso di errore.
+// Inizializza la coda. Restituisce 0 se ha successo, -1 in caso di errore.
 int init_queue(ConcurrentQueue *q);
 
-// Distrugge la coda concorrente.
-// Libera la memoria dei nodi rimanenti e distrugge mutex/cond var.
-// Deve essere chiamata quando la coda non è più necessaria.
+// Libera i nodi rimasti e distrugge mutex e variabile di condizione.
+// Nessun thread deve più usare la coda.
 void destroy_queue(ConcurrentQueue *q);
 
-// Inserisce un task (push) in fondo alla coda in modo thread-safe.
-// Corrisponde all'operazione 'push' menzionata nel testo d'esame.
+// Inserisce un task in fondo alla coda.
 void push(ConcurrentQueue *q, Partition_Index_Task task);
 
-// Estrae un task (pop) dalla testa della coda in modo thread-safe.
-// Se la coda è vuota, attende finché non arriva un task o la coda viene chiusa.
-// Corrisponde all'operazione 'pop' menzionata nel testo d'esame.
-// Restituisce 1 se un task è stato estratto con successo (e copiato in 'task').
-// Restituisce 0 se la coda è vuota E chiusa (non arriveranno altri task).
+// Estrae il task in testa. Se la coda è vuota ma non chiusa attende.
+// Restituisce 1 con il task in *task; 0 se la coda è vuota E chiusa.
 int pop(ConcurrentQueue *q, Partition_Index_Task *task);
 
-// Segnala che non verranno più aggiunti task iniziali alla coda.
-// Usato da Worker 0 dopo aver inserito tutte le partizioni iniziali.
-// Permette ai worker in attesa su pop di terminare se la coda diventa vuota.
+// Dichiara che non verranno più inseriti task e sveglia tutti i consumatori in attesa.
 void close_queue(ConcurrentQueue *q);
 
 #endif // QUEUE_H

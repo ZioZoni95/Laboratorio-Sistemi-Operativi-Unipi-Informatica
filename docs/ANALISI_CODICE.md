@@ -1,15 +1,16 @@
 # Analisi del codice: problemi e aree di miglioramento
 
-Questa analisi accompagna la riorganizzazione della repository. **Il codice dei sorgenti non è stato
-modificato** (a parte i tre script di test di Settembre 2024, vedi §1): qui sono elencati i problemi
-trovati, così da poter decidere cosa correggere.
+Questa analisi accompagna la riorganizzazione della repository. I problemi di `esami/2025-05-maggio` sono
+stati **corretti** (§2); **il codice di tutti gli altri progetti non è stato modificato** (a parte i tre
+script di test di Settembre 2024, vedi §1): per quelli sono elencati i problemi trovati, così da poter
+decidere cosa correggere.
 
 ## 0. Cosa è stato verificato (e cosa no)
 
 | Verifica | Ambito |
 |---|---|
 | `gcc 13.3 -Wall -Wextra -fsyntax-only` | tutti i 72 file `.c` |
-| Build + esecuzione, ThreadSanitizer, ASan/UBSan, misure di tempo | `esami/2025-05-maggio` |
+| Build + esecuzione, ThreadSanitizer, ASan/UBSan, misure di tempo, controllo di mutazione dei test | `esami/2025-05-maggio` (prima e dopo le correzioni) |
 | Build + esecuzione di casi limite | `esami/2024-09-settembre/versione-1` (`R=0`, `R=abc`), `esami/2025-03-marzo/new_ProgettoMarzo25` (ASan, vari N/P/k/C) |
 | Build con il Makefile | `2023-07-luglio`, `2024-09-settembre/*`, `2025-03-marzo/*` |
 | Compilazione e link dei comandi riportati nei README | `esercitazione-03`, `-05/es1`, `-06` (dry-run), `-07`, `-08` |
@@ -37,74 +38,22 @@ Legenda: **🔴 bug / difetto confermato** · **🟠 rischio o fragilità** · *
 
 ---
 
-## 2. Progetto principale: `esami/2025-05-maggio`
+## 2. Progetto principale: `esami/2025-05-maggio` — **risolto**
 
-Funziona: ordina correttamente in tutti i casi provati (P = 1…16, N = 1…40 000 000 con verifica finale, N < P,
-N non multiplo di P) e **ThreadSanitizer, AddressSanitizer e UBSan non segnalano nulla**. I problemi sono di
-prestazioni, robustezza e qualità dei test.
+Questa sezione elencava i difetti del progetto di maggio. **Sono stati corretti**: il dettaglio, le misure
+prima/dopo e ciò che resta aperto sono nel [README del progetto](../esami/2025-05-maggio/README.md#5-cosa-è-stato-migliorato).
+Riepilogo dei problemi originali:
 
-### 🔴 Test: lo stress test risulta sempre `[ERRORE]`
+| | Problema originale | Esito |
+|---|---|---|
+| 🔴 | `test.sh`: lo stress test risultava sempre `[ERRORE]` (`time` dentro una variabile), `exit 0` incondizionato, ramo "Errore Atteso" mai usato, copertura minima | Riscritto: 142 test, exit code corretto, timeout, `make check` con ASan/UBSan e TSan. Verificato con un controllo di mutazione (4 bug su 4 rilevati) |
+| 🟠 | `merge_mutex`/`copy_mutex` serializzavano il merge; `__sync_synchronize` superfluo | Rimossi (TSan pulito). Merge con buffer alternati, una barriera per passo |
+| 🟠 | `P` solo potenza di 2; partizioni fisse a `P` | Qualunque `P ≥ 1`; opzione `-p` per le partizioni |
+| 🟠 | `atol`/`atoi` senza controlli; indici `int` con `N` `long`; exit code `0` con risultato errato; `pthread_*` non controllati | `getopt` + `strtol`, tipi `long`, exit code `1`, verifica di permutazione (checksum, esatta con `-c`), ogni chiamata controllata |
+| 🟡 | Semantica di `DEBUG` invertita; `worker_thread` da 340 righe; indici di merge in `O(P)`; `task_count` inutilizzato; Makefile senza `-O2`/sanitizer | `-v` a runtime; fasi separate; formula chiusa `O(1)`; rimosso; target `test-asan`/`test-tsan`/`check` |
 
-`test.sh:89` passa `"time $PROGRAM ..."` come stringa e `run_test` la esegue con `$command`: la parola
-riservata `time` non viene riconosciuta e la shell cerca un comando chiamato `time`. Il programma non
-viene mai eseguito. Effetto confermato: `make test` stampa `Esito Test Stress_P4_N5k: [ERRORE]`, mentre
-tutti gli altri test sono `[OK]`. Correzione: eseguire `time` dentro `run_test` oppure rimuoverlo.
-
-Altri difetti dello script:
-- termina sempre con `exit 0` (riga 96): una batteria con test falliti restituisce successo, quindi inutile in CI;
-- il ramo "Errore Atteso" per `P` non potenza di 2 esiste ma **nessun test lo usa**;
-- non prova `P = 8, 16`, né `N` grandi, né argomenti non validi (`-n 0`, `-n abc`);
-- `sleep 1` dopo ciascuno degli 11 test (11 secondi persi), esito deciso con `grep` su una stringa italiana.
-
-### 🟠 Mutex superflui che serializzano la fase di merge
-
-`worker.c:266-273` (`merge_mutex` attorno a `merge_sections`) e `worker.c:325-336` (`copy_mutex` attorno
-alla copia) fanno sì che i Worker attivi **non fondano mai in parallelo**, vanificando lo scopo dei
-log₂P passi paralleli della traccia. I mutex non servono: ogni Worker scrive un intervallo disgiunto di
-`temp_array`/`array` e le barriere separano già le fasi.
-
-Misurato (4 core, `-O2`, N = 40 000 000, una sola esecuzione per configurazione: c'è rumore): rimuovendo i quattro lock/unlock, **TSan resta pulito** e il
-tempo scende da 6,5 s a 5,7 s (P=2) e da 3,9 s a 3,6 s (P=4), cioè −8/−13 %. Il guadagno è contenuto perché
-domina il `qsort`, ma il codice è anche più semplice. Stesso discorso per `__sync_synchronize()`
-(`worker.c:279`): `pthread_barrier_wait` e `mutex_unlock` sono già barriere di memoria.
-
-### 🟠 `P` limitato alle potenze di 2
-
-`main.c:60` rifiuta `-w 3`, `-w 6`, ecc. La traccia parla di log₂P passi, quindi è una scelta difendibile,
-ma il testo richiede anche che il programma sia corretto "al variare del numero di thread worker": un
-valutatore che provi `P = 3` vede un errore. Il merge ad albero si estende a P qualsiasi con `⌈log₂P⌉`
-passi in cui un Worker senza "compagno" non fa nulla.
-
-### 🟠 Robustezza degli argomenti e dei tipi
-
-- `main.c:38,41`: `atol`/`atoi` non rilevano input non numerici (`-n 12abc` → 12), overflow, o valori negativi
-  convertiti in modo silenzioso. Meglio `strtol` con controllo di `errno`/`endptr`.
-- `common.h:49-50`: `start`/`end` del task sono `int`, mentre `N` è `long`. Per `N > 2³¹−1` gli indici
-  traboccano (stessa cosa per i parametri `int` di `merge_sections`). Usare `size_t`/`long` ovunque.
-- `main.c:82`: `rand() % (n * 10)`; `RAND_MAX` è 2³¹−1, quindi per N grandi la distribuzione è troncata
-  e non uniforme. Accettabile per un test, da sapere.
-- `main.c:144`: il valore di ritorno di `pthread_join` non è controllato; i `pthread_*` di `queue.c`
-  idem (lock/unlock/signal).
-- `main.c:180-184,203`: se la verifica fallisce il programma stampa l'errore ma restituisce comunque
-  `EXIT_SUCCESS`; per questo `test.sh` deve fare `grep` sull'output. Restituire `EXIT_FAILURE`.
-
-### 🟡 Design e qualità
-
-- **Semantica di `DEBUG` invertita**: con `DEBUG 0` (default) il programma stampa tracce di sorting/merge
-  (`worker.c:50,80,109,238,368`; `main.c:87,150`), con `DEBUG 1` stampa le tracce dettagliate. Più chiaro:
-  `VERBOSE`/`TRACE` separato da `DEBUG`, impostabile da riga di comando (`-DDEBUG=1`; ora è hard-coded in
-  `common.h:7`) con `#ifndef`.
-- **Calcolo degli indici di merge in O(P) per Worker** (`worker.c:191-210`): la partizione `i` inizia in
-  `i*chunk + min(i, remainder)`, formula chiusa O(1) già usata in fase 1.
-- **Due barriere per passo più una fase di copia** (`worker.c:294,346`): con due buffer alternati
-  (*ping-pong*) si elimina la copia e una barriera per passo.
-- `queue.h:20`/`queue.c`: `task_count` è mantenuto ma non letto da nessuno ("per debug").
-- Il progetto compila con `-Wall -Wextra` senza warning: ottimo. Mancano `-std=c11`/`-O2` e
-  `-fsanitize` come target (`make asan`, `make tsan`).
-- Commenti molto verbosi che ripetono il codice (`i++; // Avanza l'indice`), in parte in funzioni lunghe
-  come `worker_thread` (≈340 righe): spezzare in `phase_partition`, `phase_sort`, `phase_merge`.
-- `merge_sections` verifica tutto con `assert`, che spariscono con `-DNDEBUG`; accettabile, ma gli
-  input non validi andrebbero gestiti nel chiamante.
+Prestazioni (4 core, `N = 40 M`, fase di ordinamento): P=2 −4 %, P=4 −13 %. Non ancora affrontato: l'ultimo
+passo di merge resta su un solo Worker (limite della traccia; vedi gli sviluppi futuri nel README).
 
 ---
 
@@ -190,11 +139,10 @@ tutte le copie. Soluzione: un `common/` per esercitazione con `-Icommon`.
 
 | Priorità | Intervento | Sforzo |
 |---|---|---|
-| 1 | `test.sh` di maggio: far funzionare lo stress test e propagare l'exit code | minimo |
-| 2 | `tokenizer.h` (`#ifndef`), `assignment5_3.c:47` e `lstat`, `opendir`/`realpath` in `5_2` | minimo |
-| 3 | `versione-1` di settembre: `exit(1)` su valori non validi; eliminare `main copy.c` | minimo |
-| 4 | `progetto_marzo_gem`: separare le due implementazioni | basso |
-| 5 | Maggio: togliere i due mutex, validare gli argomenti con `strtol`, tipi `long` | basso |
-| 6 | Maggio: supporto a P qualsiasi, merge con buffer ping-pong, refactor di `worker_thread` | medio |
-| 7 | CI e Makefile radice | medio |
-| 8 | Riscrittura della storia per eliminare i binari dalla cronologia | decisione a parte |
+| ✅ | Maggio: `test.sh`, mutex, `P` qualsiasi, validazione degli argomenti, ping-pong, refactor (§2) | fatto |
+| 1 | `tokenizer.h` (`#ifndef`), `assignment5_3.c:47` e `lstat`, `opendir`/`realpath` in `5_2` | minimo |
+| 2 | `versione-1` di settembre: `exit(1)` su valori non validi; eliminare `main copy.c` | minimo |
+| 3 | `progetto_marzo_gem`: separare le due implementazioni | basso |
+| 4 | Maggio: merge parallelo con co-ranking, barriera scritta a mano, input non casuali (vedi gli sviluppi futuri nel README) | medio |
+| 5 | CI e Makefile radice | medio |
+| 6 | Riscrittura della storia per eliminare i binari dalla cronologia | decisione a parte |

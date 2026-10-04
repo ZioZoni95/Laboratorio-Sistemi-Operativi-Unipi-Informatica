@@ -29,7 +29,7 @@ Ogni cartella ha un proprio README con l'elenco dei contenuti:
 |---|---|
 | [`esercitazioni/`](esercitazioni/README.md) | Un esercizio per file, con argomento e comando di compilazione |
 | [`esami/`](esami/README.md) | Tracce, versioni dei progetti e stato di ciascuna |
-| [`esami/2025-05-maggio/`](esami/2025-05-maggio/README.md) | Il progetto più curato: Makefile, suite di test, uso e design |
+| [`esami/2025-05-maggio/`](esami/2025-05-maggio/README.md) | Il progetto più curato: uso, algoritmo, miglioramenti misurati, limiti e sviluppi futuri, pseudocodice della traccia |
 | [`docs/ANALISI_CODICE.md`](docs/ANALISI_CODICE.md) | Bug, rischi e miglioramenti, ordinati per priorità |
 
 ## Requisiti

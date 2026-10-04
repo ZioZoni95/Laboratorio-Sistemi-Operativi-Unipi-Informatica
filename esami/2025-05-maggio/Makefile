@@ -1,40 +1,49 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -pthread -Iinclude -g
-LDFLAGS = -pthread
+CC      ?= gcc
+CFLAGS  ?= -O2 -g
+override CFLAGS += -std=gnu11 -Wall -Wextra -pthread -Iinclude
+LDFLAGS += -pthread
 
 SRCDIR = src
 OBJDIR = obj
-INCDIR = include
-
 SOURCES = $(wildcard $(SRCDIR)/*.c)
+HEADERS = $(wildcard include/*.h)
 OBJECTS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SOURCES))
 
 EXECUTABLE = parallel_sort
+
+# Opzioni per i controlli dinamici (eseguibili separati, sorgenti ricompilati)
+SAN_FLAGS = -std=gnu11 -Wall -Wextra -pthread -Iinclude -g -O1
 
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
-	@echo "Eseguibile $(EXECUTABLE) creato con successo."
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(wildcard $(INCDIR)/*.h) Makefile
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HEADERS) Makefile
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
-	@echo "Compilato $< -> $@"
+
+# ThreadSanitizer (data race) e AddressSanitizer + UBSan (memoria, comportamenti indefiniti)
+$(EXECUTABLE)_tsan: $(SOURCES) $(HEADERS)
+	$(CC) $(SAN_FLAGS) -fsanitize=thread $(SOURCES) -o $@
+
+$(EXECUTABLE)_asan: $(SOURCES) $(HEADERS)
+	$(CC) $(SAN_FLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer $(SOURCES) -o $@
+
+# Batteria di test: BIN indica l'eseguibile da provare (default: quello normale).
+test: $(EXECUTABLE)
+	BIN=./$(EXECUTABLE) bash ./test.sh
+
+test-tsan: $(EXECUTABLE)_tsan
+	BIN=./$(EXECUTABLE)_tsan QUICK=1 bash ./test.sh
+
+test-asan: $(EXECUTABLE)_asan
+	BIN=./$(EXECUTABLE)_asan QUICK=1 bash ./test.sh
+
+# Tutti i controlli: normale + sanitizer
+check: test test-asan test-tsan
 
 clean:
-	@echo "Pulizia dei file generati..."
-	rm -rf $(OBJDIR)
-	rm -f $(EXECUTABLE)
-	@echo "Pulizia completata."
+	rm -rf $(OBJDIR) log $(EXECUTABLE) $(EXECUTABLE)_tsan $(EXECUTABLE)_asan
 
-test: all
-	@echo "Esecuzione della batteria di test..."
-	@if [ -f ./test.sh ]; then \
-		bash ./test.sh; \
-	else \
-		echo "ERRORE: Script di test 'test.sh' non trovato nella directory corrente."; \
-		exit 1; \
-	fi
-
-.PHONY: all clean test
+.PHONY: all test test-tsan test-asan check clean
